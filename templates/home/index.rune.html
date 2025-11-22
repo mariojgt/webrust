@@ -1,0 +1,36 @@
+{% extends "layout.rune.html" %}
+
+{% block content %}
+<h1 class="heading">
+    {{ title }}<br />
+    <span>with .rune.html templates</span>
+</h1>
+
+<p class="subheading">
+    You now have a tiny Laravel-style framework in Rust:
+    routes, controllers, middleware, validation, models and a Rune CLI.
+</p>
+
+<div class="badge-row">
+    <div class="badge">
+        <span class="badge-key"></span>
+        <span><strong>Route</strong> → <code>GET /</code> → <strong>Home::index</strong></span>
+    </div>
+    <div class="badge">
+        <span class="badge-key"></span>
+        <span><strong>View</strong> → <code>templates/home/index.rune.html</code></span>
+    </div>
+    <div class="badge">
+        <span class="badge-key"></span>
+        <span><strong>Middleware</strong> → <code>http::middleware::log_request</code></span>
+    </div>
+</div>
+
+<div class="primary-card">
+    <div class="primary-card-icon">⚙️</div>
+    <div class="primary-card-text">
+        <strong>Next steps:</strong> Add your own controllers, models and views.
+        Use <code>cargo run -- rune make-controller Blog</code> to generate a controller scaffold.
+    </div>
+</div>
+{% endblock content %}

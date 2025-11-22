@@ -1,0 +1,24 @@
+{% extends "layout.rune.html" %}
+
+{% block content %}
+<h1 class="heading">
+    {{ title }}<br />
+    <span>coming from MySQL via SQLx</span>
+</h1>
+
+<p class="subheading">
+    This page expects a <code>users</code> table in your database.
+    If the table is empty, you'll just see an empty list.
+</p>
+
+<ul>
+    {% for user in users %}
+        <li>
+            <strong>{{ user.name }}</strong>
+            <span style="color: #9ca3af;">{{ user.email }}</span>
+        </li>
+    {% else %}
+        <li>No users found. Insert some rows in the <code>users</code> table.</li>
+    {% endfor %}
+</ul>
+{% endblock content %}
