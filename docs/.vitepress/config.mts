@@ -49,9 +49,11 @@ export default defineConfig({
         text: 'Getting Started',
         items: [
           { text: 'Introduction', link: '/GUIDE' },
+          { text: 'Application Lifecycle', link: '/LIFECYCLE' },
           { text: 'Basics', link: '/BASICS' },
           { text: 'Routing', link: '/ROUTES' },
           { text: 'Migrations', link: '/MIGRATIONS' },
+          { text: 'Deployment & Docker', link: '/DEPLOYMENT' },
         ]
       },
       {
