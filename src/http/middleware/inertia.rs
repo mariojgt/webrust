@@ -6,7 +6,7 @@ use axum::{
 };
 use serde_json::json;
 use tower_sessions::Session;
-use crate::services::{auth::Auth, flash::Flash};
+use crate::services::{auth::Auth, flash::Flash, validation::ValidationErrors};
 use crate::http::inertia::SharedInertiaProps;
 
 pub async fn share_inertia_data(
@@ -31,6 +31,10 @@ pub async fn share_inertia_data(
         flash[msg.kind] = json!(msg.message);
     }
     props["flash"] = flash;
+
+    // Share Validation Errors
+    let errors = ValidationErrors::get(&session).await;
+    props["errors"] = json!(errors);
 
     req.extensions_mut().insert(SharedInertiaProps(props));
 

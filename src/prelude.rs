@@ -3,7 +3,7 @@ pub use crate::dump;
 pub use crate::debug;
 pub use crate::framework::AppState;
 pub use crate::http::validation::FormRequest;
-pub use crate::services::{auth::Auth, flash::Flash, storage::Storage, mail::Mail};
+pub use crate::services::{auth::Auth, flash::Flash, storage::Storage, mail::Mail, validation::ValidationErrors};
 pub use crate::orbit::Orbit;
 pub use crate::support::str::Str;
 pub use crate::support::arr::Arr;
