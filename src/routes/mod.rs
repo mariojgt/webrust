@@ -17,7 +17,7 @@ use tower_sessions::cookie::time::Duration;
 pub fn router(state: AppState) -> Router {
     let web_routes = web::web(state.clone())
         .layer(axum::middleware::from_fn_with_state(state.clone(), csrf_protection));
-        
+
     let api_routes = api::api(state.clone());
 
     // Serve static files from "public" directory

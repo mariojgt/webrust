@@ -31,8 +31,8 @@ where
 
 pub async fn csrf_protection(
     State(state): State<AppState>,
-    session: Session, 
-    req: Request<Body>, 
+    session: Session,
+    req: Request<Body>,
     next: Next
 ) -> Result<Response, StatusCode> {
     // 0. Check for exclusions from Config
@@ -55,7 +55,7 @@ pub async fn csrf_protection(
                     .take(32)
                     .map(char::from)
                     .collect();
-                
+
                 if let Err(_) = session.insert(CSRF_TOKEN_KEY, &t).await {
                     return Err(StatusCode::INTERNAL_SERVER_ERROR);
                 }

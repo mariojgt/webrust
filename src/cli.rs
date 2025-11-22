@@ -51,30 +51,35 @@ pub enum RuneCommand {
     Setup,
 
     /// Generate a new controller file (very small scaffold)
+    #[command(name = "make:controller")]
     MakeController {
         /// Name of the controller (e.g. Home, UserProfile)
         name: String,
     },
 
     /// Generate a new model file
+    #[command(name = "make:model")]
     MakeModel {
         /// Name of the model (e.g. User, Post)
         name: String,
     },
 
     /// Generate a new middleware
+    #[command(name = "make:middleware")]
     MakeMiddleware {
         /// Name of the middleware (e.g. Auth, Cors)
         name: String,
     },
 
     /// Generate a new form request
+    #[command(name = "make:request")]
     MakeRequest {
         /// Name of the request (e.g. LoginRequest)
         name: String,
     },
 
     /// Create a new migration file
+    #[command(name = "make:migration")]
     MakeMigration {
         /// Name of the migration (e.g. create_users_table)
         name: String,
@@ -84,7 +89,24 @@ pub enum RuneCommand {
     Migrate,
 
     /// Rollback the last database migration
+    #[command(name = "migrate:rollback")]
     MigrateRollback,
+
+    /// Start the queue worker
+    #[command(name = "queue:work")]
+    QueueWork {
+        /// The name of the queue to work
+        #[arg(long, default_value = "default")]
+        queue: String,
+    },
+
+    /// Run the scheduled tasks
+    #[command(name = "schedule:run")]
+    ScheduleRun,
+
+    /// Scaffold basic login and registration views and routes
+    #[command(name = "make:auth")]
+    MakeAuth,
 }
 
 pub async fn run_setup() -> Result<(), Box<dyn std::error::Error>> {
@@ -323,6 +345,317 @@ pub struct {struct_name} {{
     let mod_path = dir.join("mod.rs");
     let mod_line = format!("pub mod {module_name};\n");
     append_to_mod_file(&mod_path, &mod_line)?;
+
+    Ok(())
+}
+
+pub fn make_auth() -> io::Result<()> {
+    println!("🔐 Scaffolding authentication...");
+
+    // 1. Create Requests
+    let requests_dir = Path::new("src").join("requests");
+    fs::create_dir_all(&requests_dir)?;
+    let auth_request_path = requests_dir.join("auth.rs");
+
+    let auth_request_content = r#"
+use serde::Deserialize;
+use validator::Validate;
+
+#[derive(Deserialize, Validate, Debug)]
+pub struct LoginRequest {
+    #[validate(email(message = "Invalid email address"))]
+    pub email: String,
+    #[validate(length(min = 1, message = "Password is required"))]
+    pub password: String,
+}
+
+#[derive(Deserialize, Validate, Debug)]
+pub struct RegisterRequest {
+    #[validate(length(min = 1, message = "Name is required"))]
+    pub name: String,
+    #[validate(email(message = "Invalid email address"))]
+    pub email: String,
+    #[validate(length(min = 8, message = "Password must be at least 8 characters"))]
+    pub password: String,
+    #[validate(must_match(other = "password", message = "Passwords do not match"))]
+    pub password_confirmation: String,
+}
+"#;
+    fs::write(&auth_request_path, auth_request_content.trim_start())?;
+    println!("✅ Created src/requests/auth.rs");
+    append_to_mod_file(&requests_dir.join("mod.rs"), "pub mod auth;\n")?;
+
+    // 2. Create Controller
+    let controllers_dir = Path::new("src").join("controllers");
+    fs::create_dir_all(&controllers_dir)?;
+    let auth_controller_path = controllers_dir.join("auth.rs");
+
+    let auth_controller_content = r#"
+use axum::{
+    extract::State,
+    response::{Html, Redirect, Response, IntoResponse},
+    Form,
+};
+use tera::Context;
+use validator::Validate;
+use tower_sessions::Session;
+
+use crate::framework::AppState;
+use crate::requests::auth::{LoginRequest, RegisterRequest};
+use crate::services::{auth::Auth, hash, flash::Flash};
+use crate::models::user::User;
+use crate::orbit::Orbit;
+use crate::prelude::*;
+
+pub async fn login_form(State(state): State<AppState>, session: Session) -> impl IntoResponse {
+    let mut ctx = Context::new();
+    ctx.insert("title", "Login");
+
+    // Pass flash messages to view
+    if let Some(msg) = Flash::get(&session, "error").await {
+        ctx.insert("error", &msg);
+    }
+    if let Some(msg) = Flash::get(&session, "success").await {
+        ctx.insert("success", &msg);
+    }
+
+    let body = state.templates.render("auth/login.rune.html", &ctx).unwrap();
+    Html(body)
+}
+
+pub async fn register_form(State(state): State<AppState>, session: Session) -> impl IntoResponse {
+    let mut ctx = Context::new();
+    ctx.insert("title", "Register");
+
+    if let Some(msg) = Flash::get(&session, "error").await {
+        ctx.insert("error", &msg);
+    }
+
+    let body = state.templates.render("auth/register.rune.html", &ctx).unwrap();
+    Html(body)
+}
+
+pub async fn login(
+    State(state): State<AppState>,
+    session: Session,
+    Form(payload): Form<LoginRequest>,
+) -> Response {
+    if let Err(e) = payload.validate() {
+        Flash::error(&session, "Validation failed").await;
+        return Redirect::to("/login").into_response();
+    }
+
+    if let Some(pool) = &state.db {
+        match Auth::attempt(pool, &session, &payload.email, &payload.password).await {
+            Ok(true) => {
+                Flash::success(&session, "Welcome back!").await;
+                Redirect::to("/dashboard").into_response()
+            }
+            _ => {
+                Flash::error(&session, "Invalid credentials").await;
+                Redirect::to("/login").into_response()
+            }
+        }
+    } else {
+        Flash::error(&session, "Database not connected").await;
+        Redirect::to("/login").into_response()
+    }
+}
+
+pub async fn register(
+    State(state): State<AppState>,
+    session: Session,
+    Form(payload): Form<RegisterRequest>,
+) -> Response {
+    if let Err(e) = payload.validate() {
+        Flash::error(&session, "Validation failed").await;
+        return Redirect::to("/register").into_response();
+    }
+
+    if let Some(pool) = &state.db {
+        // Check if user exists
+        if let Ok(Some(_)) = User::find_by_email(pool, &payload.email).await {
+            Flash::error(&session, "Email already taken").await;
+            return Redirect::to("/register").into_response();
+        }
+
+        // Create user
+        let hashed = hash::make(&payload.password).unwrap();
+
+        // Using Orbit to create
+        // Note: You might need to define a NewUser struct or use a map if your User struct has fields that are not in the form
+        // For simplicity, we assume we can insert raw SQL or use a helper.
+        // Here we'll use raw SQL for safety as User struct might have ID.
+
+        let result = sqlx::query("INSERT INTO users (name, email, password, created_at) VALUES (?, ?, ?, NOW())")
+            .bind(&payload.name)
+            .bind(&payload.email)
+            .bind(&hashed)
+            .execute(pool)
+            .await;
+
+        match result {
+            Ok(_) => {
+                // Login immediately
+                let _ = Auth::attempt(pool, &session, &payload.email, &payload.password).await;
+                Flash::success(&session, "Account created!").await;
+                Redirect::to("/dashboard").into_response()
+            }
+            Err(e) => {
+                Flash::error(&session, &format!("Database error: {}", e)).await;
+                Redirect::to("/register").into_response()
+            }
+        }
+    } else {
+        Flash::error(&session, "Database not connected").await;
+        Redirect::to("/register").into_response()
+    }
+}
+
+pub async fn logout(session: Session) -> impl IntoResponse {
+    Auth::logout(&session).await;
+    Flash::success(&session, "Logged out successfully").await;
+    Redirect::to("/login")
+}
+"#;
+    fs::write(&auth_controller_path, auth_controller_content.trim_start())?;
+    println!("✅ Created src/controllers/auth.rs");
+    append_to_mod_file(&controllers_dir.join("mod.rs"), "pub mod auth;\n")?;
+
+    // 3. Create Routes
+    let routes_dir = Path::new("src").join("routes");
+    let auth_routes_path = routes_dir.join("auth.rs");
+    let auth_routes_content = r#"
+use axum::{
+    routing::{get, post},
+    Router,
+};
+use crate::framework::AppState;
+use crate::controllers::auth;
+
+pub fn routes(state: AppState) -> Router<AppState> {
+    Router::new()
+        .route("/login", get(auth::login_form).post(auth::login))
+        .route("/register", get(auth::register_form).post(auth::register))
+        .route("/logout", post(auth::logout))
+}
+"#;
+    fs::write(&auth_routes_path, auth_routes_content.trim_start())?;
+    println!("✅ Created src/routes/auth.rs");
+    // Note: User still needs to register this in src/routes/mod.rs manually or we try to inject it.
+
+    // 4. Create Templates
+    let templates_dir = Path::new("templates").join("auth");
+    fs::create_dir_all(&templates_dir)?;
+
+    let login_html = r#"
+{% extends "layout.rune.html" %}
+
+{% block content %}
+<div style="max-width: 400px; margin: 2rem auto; padding: 2rem; border: 1px solid #ccc; border-radius: 8px;">
+    <h2>Login</h2>
+
+    {% if error %}
+        <div style="color: red; margin-bottom: 1rem;">{{ error }}</div>
+    {% endif %}
+    {% if success %}
+        <div style="color: green; margin-bottom: 1rem;">{{ success }}</div>
+    {% endif %}
+
+    <form action="/login" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+        <div style="margin-bottom: 1rem;">
+            <label>Email</label>
+            <input type="email" name="email" required style="width: 100%; padding: 0.5rem;">
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+            <label>Password</label>
+            <input type="password" name="password" required style="width: 100%; padding: 0.5rem;">
+        </div>
+
+        <button type="submit" style="width: 100%; padding: 0.5rem; background: #333; color: white; border: none; cursor: pointer;">Login</button>
+    </form>
+
+    <p style="margin-top: 1rem; text-align: center;">
+        Don't have an account? <a href="/register">Register</a>
+    </p>
+</div>
+{% endblock %}
+"#;
+    fs::write(templates_dir.join("login.rune.html"), login_html.trim_start())?;
+
+    let register_html = r#"
+{% extends "layout.rune.html" %}
+
+{% block content %}
+<div style="max-width: 400px; margin: 2rem auto; padding: 2rem; border: 1px solid #ccc; border-radius: 8px;">
+    <h2>Register</h2>
+
+    {% if error %}
+        <div style="color: red; margin-bottom: 1rem;">{{ error }}</div>
+    {% endif %}
+
+    <form action="/register" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+        <div style="margin-bottom: 1rem;">
+            <label>Name</label>
+            <input type="text" name="name" required style="width: 100%; padding: 0.5rem;">
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+            <label>Email</label>
+            <input type="email" name="email" required style="width: 100%; padding: 0.5rem;">
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+            <label>Password</label>
+            <input type="password" name="password" required style="width: 100%; padding: 0.5rem;">
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+            <label>Confirm Password</label>
+            <input type="password" name="password_confirmation" required style="width: 100%; padding: 0.5rem;">
+        </div>
+
+        <button type="submit" style="width: 100%; padding: 0.5rem; background: #333; color: white; border: none; cursor: pointer;">Register</button>
+    </form>
+
+    <p style="margin-top: 1rem; text-align: center;">
+        Already have an account? <a href="/login">Login</a>
+    </p>
+</div>
+{% endblock %}
+"#;
+    fs::write(templates_dir.join("register.rune.html"), register_html.trim_start())?;
+    println!("✅ Created templates/auth/");
+
+    // Dashboard
+    let dashboard_html = r#"
+{% extends "layout.rune.html" %}
+
+{% block content %}
+<div style="max-width: 800px; margin: 2rem auto;">
+    <h1>Dashboard</h1>
+    <p>You are logged in!</p>
+
+    <form action="/logout" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit">Logout</button>
+    </form>
+</div>
+{% endblock %}
+"#;
+    fs::write(Path::new("templates").join("dashboard.rune.html"), dashboard_html.trim_start())?;
+    println!("✅ Created templates/dashboard.rune.html");
+
+    println!("\n⚠️  Action Required: Update src/routes/mod.rs");
+    println!("Add the following lines to register the auth routes:");
+    println!("    pub mod auth;");
+    println!("    // Inside router function:");
+    println!("    .merge(auth::routes(state.clone()))");
 
     Ok(())
 }

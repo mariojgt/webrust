@@ -11,6 +11,7 @@ mod debug;
 mod prelude;
 mod orbit;
 mod config;
+mod support;
 
 use clap::Parser;
 use crate::cli::{Cli, Command, RuneCommand};
@@ -118,6 +119,33 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 RuneCommand::MigrateRollback => {
                     cli::rollback_migrations().await?;
+                }
+                RuneCommand::QueueWork { queue } => {
+                    let config = crate::config::Config::new();
+                    let mut queue_config = config.queue.clone();
+                    queue_config.queue_name = queue;
+
+                    if let Err(e) = crate::services::queue::Queue::work(&queue_config).await {
+                        eprintln!("Queue worker failed: {}", e);
+                    }
+                }
+                RuneCommand::ScheduleRun => {
+                    println!("⏰ Starting Scheduler...");
+                    let scheduler = crate::services::scheduler::Scheduler::new().await.expect("Failed to create scheduler");
+
+                    // Example task
+                    scheduler.add_async("1/10 * * * * *", || async {
+                        println!("Tick! (every 10s)");
+                    }).await.expect("Failed to add task");
+
+                    scheduler.start().await.expect("Failed to start scheduler");
+
+                    // Keep alive
+                    tokio::signal::ctrl_c().await?;
+                    println!("🛑 Scheduler stopped");
+                }
+                RuneCommand::MakeAuth => {
+                    cli::make_auth()?;
                 }
             }
         }

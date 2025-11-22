@@ -355,6 +355,29 @@ See [CSRF.md](CSRF.md) for usage instructions.
 
 ---
 
+## 14. Mail, Queues & Scheduling
+
+WebRust now supports:
+- **Mail**: SMTP support via `lettre`. See [MAIL.md](MAIL.md).
+- **Queues**: Redis-backed job queues. See [QUEUES.md](QUEUES.md).
+- **Scheduling**: Cron-based task scheduling. See [SCHEDULER.md](SCHEDULER.md).
+
+## 15. Authentication
+
+WebRust can scaffold a full authentication system (Login, Register, Logout) for you.
+
+```bash
+cargo run -- rune make:auth
+```
+
+See [AUTH.md](AUTH.md) for details.
+
+## 16. Controllers & Views Guide
+
+For a step-by-step guide on creating controllers, rendering views, and building JSON APIs, see [BASICS.md](BASICS.md).
+
+---
+
 From here you can:
 
 - Add more Rune commands: `make:model`, `make:view`, `make:migration`
