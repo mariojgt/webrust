@@ -37,6 +37,7 @@ export default defineConfig({
           { text: 'Caching', link: '/CACHE' },
           { text: 'Validation', link: '/VALIDATION' },
           { text: 'HTTP Client', link: '/HTTP' },
+          { text: 'Logging', link: '/LOGGING' },
           { text: 'Storage', link: '/STORAGE' },
           { text: 'Packages', link: '/PACKAGES' },
         ]

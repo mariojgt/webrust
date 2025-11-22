@@ -20,7 +20,6 @@ use crate::cli::{Cli, Command, RuneCommand};
 use crate::framework::{AppState, build_tera, build_pool};
 use crate::routes::router;
 use crate::cache::{Cache, RedisCache, FileCache, MemoryCache};
-use tracing_subscriber::EnvFilter;
 use std::process::{Command as ProcessCommand, Child};
 use notify::{Watcher, RecursiveMode};
 use std::sync::mpsc::channel;
@@ -73,9 +72,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 RuneCommand::Serve { host, port } => {
                     // logging
-                    tracing_subscriber::fmt()
-                        .with_env_filter(EnvFilter::from_default_env())
-                        .init();
+                    let _guard = crate::services::log::setup();
 
                     // Try to connect to database, but don't fail if it's not available
                     let pool = match build_pool().await {

@@ -4,6 +4,7 @@ pub mod mail;
 pub mod queue;
 pub mod database;
 pub mod session;
+pub mod logging;
 
 #[derive(Debug, Clone)]
 pub struct Config {
@@ -13,6 +14,7 @@ pub struct Config {
     pub queue: queue::QueueConfig,
     pub database: database::DatabaseConfig,
     pub session: session::SessionConfig,
+    pub logging: logging::LoggingConfig,
 }
 
 impl Config {
@@ -24,6 +26,7 @@ impl Config {
             queue: queue::QueueConfig::default(),
             database: database::DatabaseConfig::default(),
             session: session::SessionConfig::default(),
+            logging: logging::LoggingConfig::default(),
         }
     }
 }
