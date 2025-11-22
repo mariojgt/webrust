@@ -23,7 +23,7 @@ pub fn router(state: AppState) -> Router {
     // Session Config
     let store = MemoryStore::default();
     // In production, load this from .env
-    let secret = "0123456789012345678901234567890123456789012345678901234567890123"; 
+    let secret = "0123456789012345678901234567890123456789012345678901234567890123";
     let key = Key::from(secret.as_bytes());
 
     let session_layer = SessionManagerLayer::new(store)

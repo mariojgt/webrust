@@ -14,7 +14,7 @@ impl Mail {
         println!("📧 [MAIL SIMULATION] To: {}, Subject: {}", to, subject);
         println!("   Body: {}", body);
     }
-    
+
     /// Send a mailable (struct that implements a trait)
     pub fn send_mailable() {
         // This is where you'd implement the Mailable trait logic

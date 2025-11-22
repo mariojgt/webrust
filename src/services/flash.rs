@@ -28,7 +28,7 @@ impl Flash {
     pub async fn error(session: &Session, message: &str) {
         Self::push(session, "error", message).await;
     }
-    
+
     // This should be called by middleware to inject into template context
     pub async fn get_all(session: &Session) -> Vec<FlashMessage> {
         let messages: Option<Vec<FlashMessage>> = session.get(FLASH_SESSION_KEY).await.unwrap();

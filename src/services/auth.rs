@@ -16,7 +16,7 @@ impl Auth {
     ) -> Result<bool, sqlx::Error> {
         // Find user by email
         let user = User::find_by_email(pool, email).await?;
-        
+
         if let Some(user) = user {
             if let Some(hash) = &user.password {
                 if crate::services::hash::check(password, hash) {
@@ -25,7 +25,7 @@ impl Auth {
                 }
             }
         }
-        
+
         Ok(false)
     }
 
@@ -38,7 +38,7 @@ impl Auth {
     pub async fn id(session: &Session) -> Option<i64> {
         session.get(AUTH_SESSION_KEY).await.unwrap()
     }
-    
+
     /// Check if user is logged in
     pub async fn check(session: &Session) -> bool {
         Self::id(session).await.is_some()

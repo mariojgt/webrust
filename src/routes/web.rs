@@ -4,7 +4,7 @@ use crate::controllers::{
     home::index as home_index,
     users::index as users_index,
     contact::submit as contact_submit,
-    auth::reset_password,
+    auth::{reset_password, login_form, login, logout},
 };
 use crate::route;
 use crate::framework::AppState;
@@ -14,6 +14,9 @@ pub fn web(state: AppState) -> Router {
     route::web()
         .get("/", home_index)
         .get("/users", users_index)
+        .get("/login", login_form)
+        .post("/login", login)
+        .post("/logout", logout)
         .post("/contact", contact_submit)
         .post("/reset-password", reset_password)
         .build()

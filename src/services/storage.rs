@@ -24,7 +24,7 @@ impl Storage {
     pub fn exists(path: &str) -> bool {
         Path::new("storage/app").join(path).exists()
     }
-    
+
     /// Delete a file
     pub fn delete(path: &str) -> io::Result<()> {
         let target_path = Path::new("storage/app").join(path);
