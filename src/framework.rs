@@ -4,6 +4,12 @@ use std::sync::Arc;
 use sqlx::mysql::{MySqlPool, MySqlPoolOptions};
 use tera::Tera;
 use crate::config::Config;
+use axum::Router;
+
+pub trait WebRustPackage {
+    fn name(&self) -> &str;
+    fn routes(&self, state: AppState) -> Router<AppState>;
+}
 
 #[derive(Clone)]
 pub struct AppState {

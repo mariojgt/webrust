@@ -383,6 +383,16 @@ WebRust supports Inertia.js for building modern SPAs with Vue/React while keepin
 
 See [docs/INERTIA.md](docs/INERTIA.md) for details.
 
+## 18. Package Development
+
+WebRust supports a modular package system, allowing you to create reusable functionality or organize your application into modules.
+
+```bash
+cargo run -- rune make:package my-package
+```
+
+See [docs/PACKAGES.md](docs/PACKAGES.md) for details.
+
 ---
 
 From here you can:

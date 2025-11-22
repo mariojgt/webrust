@@ -147,6 +147,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 RuneCommand::MakeAuth => {
                     cli::make_auth()?;
                 }
+                RuneCommand::MakePackage { name } => {
+                    cli::make_package(&name)?;
+                }
             }
         }
     }

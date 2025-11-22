@@ -107,6 +107,13 @@ pub enum RuneCommand {
     /// Scaffold basic login and registration views and routes
     #[command(name = "make:auth")]
     MakeAuth,
+
+    /// Create a new package scaffold
+    #[command(name = "make:package")]
+    MakePackage {
+        /// Name of the package (e.g. blog, admin-panel)
+        name: String,
+    },
 }
 
 pub async fn run_setup() -> Result<(), Box<dyn std::error::Error>> {
@@ -656,6 +663,64 @@ pub fn routes(state: AppState) -> Router<AppState> {
     println!("    pub mod auth;");
     println!("    // Inside router function:");
     println!("    .merge(auth::routes(state.clone()))");
+
+    Ok(())
+}
+
+pub fn make_package(name: &str) -> io::Result<()> {
+    let package_name = to_snake_case(name);
+    let package_dir = Path::new("packages").join(&package_name);
+    let src_dir = package_dir.join("src");
+
+    if package_dir.exists() {
+        println!("Package directory already exists: {:?}", package_dir);
+        return Ok(());
+    }
+
+    fs::create_dir_all(&src_dir)?;
+
+    // 1. Create Cargo.toml
+    let cargo_toml = format!(
+        r#"[package]
+name = "{package_name}"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+axum = "0.7"
+serde = {{ version = "1.0", features = ["derive"] }}
+webrust = {{ path = "../../" }}
+"#
+    );
+    fs::write(package_dir.join("Cargo.toml"), cargo_toml)?;
+
+    // 2. Create src/lib.rs
+    let lib_rs = format!(
+        r#"use axum::Router;
+use webrust::framework::AppState;
+use webrust::framework::WebRustPackage;
+
+pub struct Package;
+
+impl WebRustPackage for Package {{
+    fn name(&self) -> &str {{
+        "{package_name}"
+    }}
+
+    fn routes(&self, _state: AppState) -> Router<AppState> {{
+        Router::new()
+        // .route("/{package_name}", axum::routing::get(|| async {{ "Hello from {package_name}!" }}))
+    }}
+}}
+"#
+    );
+    fs::write(src_dir.join("lib.rs"), lib_rs)?;
+
+    println!("✅ Created package: {:?}", package_dir);
+    println!("\nTo enable this package:");
+    println!("1. Add it to [dependencies] in Cargo.toml:");
+    println!("   {} = {{ path = \"packages/{}\" }}", package_name, package_name);
+    println!("2. Register it in src/main.rs (or wherever you load packages).");
 
     Ok(())
 }
