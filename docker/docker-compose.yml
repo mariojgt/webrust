@@ -4,7 +4,7 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
     ports:
-      - "8000:8000"
+      - "${APP_PORT:-8000}:8000"
     environment:
       - DATABASE_URL=mysql://webrust:secret@db:3306/webrust_app
       - REDIS_URL=redis://redis:6379/
@@ -24,14 +24,14 @@ services:
       MYSQL_USER: webrust
       MYSQL_PASSWORD: secret
     ports:
-      - "3306:3306"
+      - "${DB_PORT:-3306}:3306"
     volumes:
       - db_data:/var/lib/mysql
 
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
 

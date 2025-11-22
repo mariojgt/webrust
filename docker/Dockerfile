@@ -19,7 +19,7 @@ COPY public ./public
 RUN npm run build
 
 # --- Stage 2: Backend Build ---
-FROM rust:1.82-slim-bookworm AS backend
+FROM rust:slim-bookworm AS backend
 
 WORKDIR /app
 
