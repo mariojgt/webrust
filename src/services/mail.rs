@@ -41,7 +41,7 @@ impl Mail {
             subject: subject.to_string(),
             body: body.to_string(),
         };
-        
+
         Queue::dispatch(&config.queue, job)
     }
 

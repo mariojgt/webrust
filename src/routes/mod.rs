@@ -55,12 +55,12 @@ pub async fn router(state: AppState) -> Router {
             if let Some(pool) = &state.db {
                 let store = SqlxStore::new(pool.clone());
                 store.migrate().await.expect("Failed to migrate session store");
-                
+
                 let session_layer = SessionManagerLayer::new(store)
                     .with_secure(false) // Set to true in production with HTTPS
                     .with_expiry(Expiry::OnInactivity(Duration::seconds(lifetime)))
                     .with_signed(key);
-                
+
                 app.layer(session_layer)
             } else {
                 tracing::warn!("⚠️ Database session driver selected but no database connection available. Falling back to memory.");

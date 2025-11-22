@@ -121,7 +121,7 @@ impl Queue {
                             };
 
                             println!("📥 Processing job: {}", job_name);
-                            
+
                             match registry.execute(job_name, payload).await {
                                 Ok(_) => println!("✅ Job {} completed", job_name),
                                 Err(e) => eprintln!("❌ Job {} failed: {}", job_name, e),
