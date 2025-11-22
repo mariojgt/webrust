@@ -165,8 +165,10 @@ let posts = user.posts().get(&pool).await?;
 If a `Post` belongs to a `User`:
 
 ```rust
+use crate::database::DbPool;
+
 impl Post {
-    pub async fn user(&self, pool: &MySqlPool) -> Result<Option<User>, sqlx::Error> {
+    pub async fn user(&self, pool: &DbPool) -> Result<Option<User>, sqlx::Error> {
         User::belongs_to(pool, self.user_id).await
     }
 }
@@ -178,15 +180,12 @@ let user = post.user(&pool).await?;
 ---
 
 ## 8. Custom Methods (Scopes / Accessors)
-```
-
----
-
-## 7. Custom Methods (Scopes / Accessors)
 
 Since Rust structs are static, we don't have "dynamic attributes", but we can just add methods to the struct.
 
 ```rust
+use crate::database::DbPool;
+
 impl User {
     // Like an Eloquent Accessor: $user->full_name
     pub fn full_name(&self) -> String {
@@ -194,7 +193,7 @@ impl User {
     }
 
     // Custom Query Scope
-    pub async fn active(pool: &MySqlPool) -> Result<Vec<Self>, sqlx::Error> {
+    pub async fn active(pool: &DbPool) -> Result<Vec<Self>, sqlx::Error> {
         Self::query()
             .where_eq("is_active", true)
             .get(pool)
@@ -202,3 +201,38 @@ impl User {
     }
 }
 ```
+
+---
+
+## 9. Database Abstraction
+
+WebRust is designed to be database-agnostic (mostly). By default, it is configured for **MySQL**, but you can switch the underlying driver by changing the type aliases in `src/database.rs`.
+
+### Switching Databases
+
+WebRust uses Cargo features to select the database driver. By default, it uses **MySQL**.
+
+To switch to **PostgreSQL**:
+
+1.  Open `Cargo.toml`.
+2.  Change the default feature:
+
+```toml
+[features]
+default = ["postgres"]
+# default = ["mysql"]
+```
+
+3.  Update your `.env` file with the PostgreSQL connection string.
+
+```dotenv
+DATABASE_URL=postgres://user:password@localhost:5432/webrust_app
+```
+
+4.  Recompile your project.
+
+```bash
+cargo run
+```
+
+The framework will automatically recompile with the PostgreSQL driver and types.

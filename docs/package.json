@@ -1,0 +1,14 @@
+{
+  "name": "webrust-docs",
+  "version": "1.0.0",
+  "description": "Documentation for WebRust Framework",
+  "scripts": {
+    "dev": "vitepress dev --host",
+    "build": "vitepress build",
+    "preview": "vitepress preview"
+  },
+  "devDependencies": {
+    "vitepress": "^1.0.0-rc.44",
+    "vue": "^3.4.0"
+  }
+}

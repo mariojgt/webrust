@@ -87,7 +87,8 @@ pub async fn index(inertia: Inertia) -> impl IntoResponse {
 
 The `share_inertia_data` middleware automatically shares common data with every Inertia response:
 - `auth.user`: The currently authenticated user (if any).
-- `flash`: Flash messages from the session.
+- `flash`: Flash messages from the session (`success`, `error`).
+- `errors`: Validation errors from the session.
 
 You can access these in your frontend components as props.
 
@@ -95,11 +96,12 @@ You can access these in your frontend components as props.
 
 ```vue
 <script setup>
-defineProps({ user: Object })
+defineProps({ user: Object, errors: Object })
 </script>
 
 <template>
   <div>Hello, {{ $page.props.auth.user.name }}</div>
+  <div v-if="errors.email" class="text-red-500">{{ errors.email }}</div>
 </template>
 ```
 

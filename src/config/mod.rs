@@ -2,6 +2,7 @@ pub mod app;
 pub mod csrf;
 pub mod mail;
 pub mod queue;
+pub mod database;
 
 #[derive(Debug, Clone)]
 pub struct Config {
@@ -9,6 +10,7 @@ pub struct Config {
     pub csrf: csrf::CsrfConfig,
     pub mail: mail::MailConfig,
     pub queue: queue::QueueConfig,
+    pub database: database::DatabaseConfig,
 }
 
 impl Config {
@@ -18,6 +20,7 @@ impl Config {
             csrf: csrf::CsrfConfig::default(),
             mail: mail::MailConfig::default(),
             queue: queue::QueueConfig::default(),
+            database: database::DatabaseConfig::default(),
         }
     }
 }

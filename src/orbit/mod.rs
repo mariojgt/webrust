@@ -1,12 +1,12 @@
 use async_trait::async_trait;
-use sqlx::mysql::{MySqlPool, MySqlRow, MySqlArguments};
+use crate::database::{Db, DbArguments, DbRow, DbPool};
 use sqlx::{FromRow, Arguments, Execute};
 
 pub mod builder;
 pub mod schema;
 
 #[async_trait]
-pub trait Orbit: Sized + Send + Unpin + for<'r> FromRow<'r, MySqlRow> {
+pub trait Orbit: Sized + Send + Unpin + for<'r> FromRow<'r, DbRow> {
     fn table_name() -> &'static str;
 
     // Optional: Override this if your primary key is not "id"
@@ -24,15 +24,15 @@ pub trait Orbit: Sized + Send + Unpin + for<'r> FromRow<'r, MySqlRow> {
         builder::Builder::new(Self::table_name())
     }
 
-    async fn all(pool: &MySqlPool) -> Result<Vec<Self>, sqlx::Error> {
+    async fn all(pool: &DbPool) -> Result<Vec<Self>, sqlx::Error> {
         Self::query().get(pool).await
     }
 
-    async fn find(pool: &MySqlPool, id: i64) -> Result<Option<Self>, sqlx::Error> {
+    async fn find(pool: &DbPool, id: i64) -> Result<Option<Self>, sqlx::Error> {
         Self::query().where_eq(Self::primary_key(), id).first(pool).await
     }
 
-    async fn create<D>(pool: &MySqlPool, data: D) -> Result<u64, sqlx::Error>
+    async fn create<D>(pool: &DbPool, data: D) -> Result<u64, sqlx::Error>
     where D: serde::Serialize + Send + Sync
     {
         let value = serde_json::to_value(data).unwrap();
@@ -40,7 +40,7 @@ pub trait Orbit: Sized + Send + Unpin + for<'r> FromRow<'r, MySqlRow> {
 
         let mut keys = Vec::new();
         let mut placeholders = Vec::new();
-        let mut args = MySqlArguments::default();
+        let mut args = DbArguments::default();
 
         for (k, v) in object {
             keys.push(k.clone());
@@ -69,14 +69,14 @@ pub trait Orbit: Sized + Send + Unpin + for<'r> FromRow<'r, MySqlRow> {
         Ok(res.last_insert_id())
     }
 
-    async fn update<D>(&self, pool: &MySqlPool, data: D) -> Result<u64, sqlx::Error>
+    async fn update<D>(&self, pool: &DbPool, data: D) -> Result<u64, sqlx::Error>
     where D: serde::Serialize + Send + Sync
     {
         let value = serde_json::to_value(data).unwrap();
         let object = value.as_object().expect("Data must be an object");
 
         let mut updates = Vec::new();
-        let mut args = MySqlArguments::default();
+        let mut args = DbArguments::default();
 
         for (k, v) in object {
             updates.push(format!("{} = ?", k));
@@ -106,7 +106,7 @@ pub trait Orbit: Sized + Send + Unpin + for<'r> FromRow<'r, MySqlRow> {
         Ok(res.rows_affected())
     }
 
-    async fn delete(&self, pool: &MySqlPool) -> Result<u64, sqlx::Error> {
+    async fn delete(&self, pool: &DbPool) -> Result<u64, sqlx::Error> {
         let sql = format!("DELETE FROM {} WHERE {} = ?", Self::table_name(), Self::primary_key());
         let res = sqlx::query(&sql)
             .bind(self.id())
@@ -121,7 +121,7 @@ pub trait Orbit: Sized + Send + Unpin + for<'r> FromRow<'r, MySqlRow> {
     /// Example: User has many Posts
     /// user.has_many::<Post>("user_id")
     fn has_many<R>(&self, foreign_key: &str) -> builder::Builder<R>
-    where R: Orbit + Send + Unpin + for<'r> FromRow<'r, MySqlRow>
+    where R: Orbit + Send + Unpin + for<'r> FromRow<'r, DbRow>
     {
         R::query().where_eq(foreign_key, self.id())
     }
@@ -129,8 +129,8 @@ pub trait Orbit: Sized + Send + Unpin + for<'r> FromRow<'r, MySqlRow> {
     /// Belongs To Relationship
     /// Example: Post belongs to User
     /// post.belongs_to::<User>(&pool, post.user_id).await
-    async fn belongs_to<R>(pool: &MySqlPool, foreign_key_value: i64) -> Result<Option<R>, sqlx::Error>
-    where R: Orbit + Send + Unpin + for<'r> FromRow<'r, MySqlRow>
+    async fn belongs_to<R>(pool: &DbPool, foreign_key_value: i64) -> Result<Option<R>, sqlx::Error>
+    where R: Orbit + Send + Unpin + for<'r> FromRow<'r, DbRow>
     {
         R::find(pool, foreign_key_value).await
     }

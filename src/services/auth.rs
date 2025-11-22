@@ -1,6 +1,6 @@
 use tower_sessions::Session;
 use crate::models::user::User;
-use sqlx::MySqlPool;
+use crate::database::DbPool;
 
 pub const AUTH_SESSION_KEY: &str = "user_id";
 
@@ -9,7 +9,7 @@ pub struct Auth;
 impl Auth {
     /// Attempt to authenticate a user
     pub async fn attempt(
-        pool: &MySqlPool,
+        pool: &DbPool,
         session: &Session,
         email: &str,
         password: &str

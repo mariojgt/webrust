@@ -1,5 +1,5 @@
-use sqlx::mysql::{MySqlPool, MySqlRow, MySqlArguments};
-use sqlx::{FromRow, Execute, MySql, Encode, Type, Arguments};
+use crate::database::{Db, DbArguments, DbRow, DbPool};
+use sqlx::{FromRow, Execute, Encode, Type, Arguments};
 use std::marker::PhantomData;
 
 /// The Query Builder
@@ -10,12 +10,12 @@ pub struct Builder<T> {
     order: Vec<String>,
     limit: Option<i64>,
     offset: Option<i64>,
-    arguments: MySqlArguments,
+    arguments: DbArguments,
     _marker: PhantomData<T>,
 }
 
 impl<T> Builder<T>
-where T: Send + Unpin + for<'r> FromRow<'r, MySqlRow>
+where T: Send + Unpin + for<'r> FromRow<'r, DbRow>
 {
     pub fn new(table: &str) -> Self {
         Self {
@@ -25,7 +25,7 @@ where T: Send + Unpin + for<'r> FromRow<'r, MySqlRow>
             order: Vec::new(),
             limit: None,
             offset: None,
-            arguments: MySqlArguments::default(),
+            arguments: DbArguments::default(),
             _marker: PhantomData,
         }
     }
@@ -43,7 +43,7 @@ where T: Send + Unpin + for<'r> FromRow<'r, MySqlRow>
     }
 
     pub fn r#where<V>(mut self, col: &str, op: &str, val: V) -> Self
-    where V: 'static + Encode<'static, MySql> + Type<MySql> + Send
+    where V: 'static + Encode<'static, Db> + Type<Db> + Send
     {
         self.wheres.push(format!("{} {} ?", col, op));
         self.arguments.add(val);
@@ -51,7 +51,7 @@ where T: Send + Unpin + for<'r> FromRow<'r, MySqlRow>
     }
 
     pub fn where_eq<V>(mut self, col: &str, val: V) -> Self
-    where V: 'static + Encode<'static, MySql> + Type<MySql> + Send
+    where V: 'static + Encode<'static, Db> + Type<Db> + Send
     {
         self.r#where(col, "=", val)
     }
@@ -95,14 +95,14 @@ where T: Send + Unpin + for<'r> FromRow<'r, MySqlRow>
         sql
     }
 
-    pub async fn get(self, pool: &MySqlPool) -> Result<Vec<T>, sqlx::Error> {
+    pub async fn get(self, pool: &DbPool) -> Result<Vec<T>, sqlx::Error> {
         let sql = self.to_sql();
         sqlx::query_as_with(&sql, self.arguments)
             .fetch_all(pool)
             .await
     }
 
-    pub async fn first(mut self, pool: &MySqlPool) -> Result<Option<T>, sqlx::Error> {
+    pub async fn first(mut self, pool: &DbPool) -> Result<Option<T>, sqlx::Error> {
         self.limit = Some(1);
         let sql = self.to_sql();
         sqlx::query_as_with(&sql, self.arguments)

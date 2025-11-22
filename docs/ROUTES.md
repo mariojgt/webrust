@@ -1,6 +1,6 @@
-# WebRust Routes - Laravel-Style Routing
+# WebRust Routes - Laravel-inspired Routing
 
-WebRust now supports Laravel-style route definition with a clean, fluent API.
+WebRust now supports Laravel-inspired route definition with a clean, fluent API.
 
 ## Quick Start
 

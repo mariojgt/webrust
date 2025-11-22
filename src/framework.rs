@@ -1,9 +1,10 @@
 use std::env;
 use std::sync::Arc;
 
-use sqlx::mysql::{MySqlPool, MySqlPoolOptions};
+use crate::database::{DbPool, DbPoolOptions};
 use tera::Tera;
 use crate::config::Config;
+use crate::cache::Cache;
 use axum::Router;
 
 pub trait WebRustPackage {
@@ -13,17 +14,19 @@ pub trait WebRustPackage {
 
 #[derive(Clone)]
 pub struct AppState {
-    pub db: Option<MySqlPool>,
+    pub db: Option<DbPool>,
     pub templates: Arc<Tera>,
     pub config: Arc<Config>,
+    pub cache: Cache,
 }
 
 impl AppState {
-    pub fn new(db: Option<MySqlPool>, templates: Tera) -> Self {
+    pub fn new(db: Option<DbPool>, templates: Tera, cache: Cache) -> Self {
         Self {
             db,
             templates: Arc::new(templates),
             config: Arc::new(Config::new()),
+            cache,
         }
     }
 }
@@ -35,12 +38,11 @@ pub fn build_tera() -> Result<Tera, tera::Error> {
     Ok(tera)
 }
 
-pub async fn build_pool() -> Result<MySqlPool, sqlx::Error> {
-    let database_url = env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "mysql://user:password@localhost:3306/webrust_app".to_string());
+pub async fn build_pool() -> Result<DbPool, sqlx::Error> {
+    let config = Config::new();
 
-    MySqlPoolOptions::new()
-        .max_connections(5)
-        .connect(&database_url)
+    DbPoolOptions::new()
+        .max_connections(config.database.max_connections)
+        .connect(&config.database.url)
         .await
 }

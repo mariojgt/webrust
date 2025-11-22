@@ -103,7 +103,7 @@ impl RouteGroup {
     }
 }
 
-/// Convenience function to create a new route group (Laravel-style)
+/// Convenience function to create a new route group (Laravel-inspired)
 #[allow(dead_code)]
 pub fn group(prefix: &str) -> RouteGroup {
     RouteGroup::new(prefix)

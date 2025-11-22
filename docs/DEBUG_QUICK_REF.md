@@ -1,6 +1,6 @@
 # 🐛 Debugging in WebRust
 
-WebRust comes with Laravel-style debugging helpers available anywhere in your application.
+WebRust comes with Laravel-inspired debugging helpers available anywhere in your application.
 
 ## Available Macros
 

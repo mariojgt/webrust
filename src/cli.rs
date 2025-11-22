@@ -8,7 +8,7 @@ use crate::framework;
 
 #[derive(Parser, Debug)]
 #[command(name = "webrust")]
-#[command(about = "WebRust – Laravel-style framework in Rust (Rune CLI)")]
+#[command(about = "WebRust – Laravel-inspired framework in Rust (Rune CLI)")]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Command,
@@ -220,7 +220,7 @@ pub fn make_model(name: &str) -> io::Result<()> {
             r#"
 use serde::{{Deserialize, Serialize}};
 use sqlx::FromRow;
-use sqlx::mysql::MySqlPool;
+use crate::database::DbPool;
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
 pub struct {struct_name} {{
@@ -231,13 +231,13 @@ pub struct {struct_name} {{
 }}
 
 impl {struct_name} {{
-    pub async fn all(pool: &MySqlPool) -> Result<Vec<Self>, sqlx::Error> {{
+    pub async fn all(pool: &DbPool) -> Result<Vec<Self>, sqlx::Error> {{
         sqlx::query_as::<_, Self>("SELECT * FROM {module_name}s")
             .fetch_all(pool)
             .await
     }}
 
-    pub async fn find(pool: &MySqlPool, id: i64) -> Result<Option<Self>, sqlx::Error> {{
+    pub async fn find(pool: &DbPool, id: i64) -> Result<Option<Self>, sqlx::Error> {{
         sqlx::query_as::<_, Self>("SELECT * FROM {module_name}s WHERE id = ?")
             .bind(id)
             .fetch_optional(pool)

@@ -51,6 +51,14 @@ cargo run -- rune migrate
 ```
 Runs pending database migrations (wraps `sqlx migrate run`).
 
+### Other Commands
+- `rune make:migration <Name>` – create a new migration file
+- `rune migrate:rollback` – rollback the last migration
+- `rune make:auth` – scaffold authentication (login/register)
+- `rune make:package <Name>` – scaffold a new package
+- `rune queue:work` – start the queue worker
+- `rune schedule:run` – run the scheduler
+
 ## 📡 Routing
 
 Routes are defined in `src/routes/web.rs` and `src/routes/api.rs` using a fluent API.

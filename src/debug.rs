@@ -6,7 +6,7 @@ pub struct DebugDump {
     pub line: u32,
 }
 
-/// Laravel-style `dd()` function for debugging
+/// Laravel-inspired `dd()` function for debugging
 /// Dumps the given value and panics with a DebugDump payload
 /// This allows the web server to catch it and render a nice HTML page
 #[macro_export]
@@ -26,7 +26,7 @@ macro_rules! dd {
     }};
 }
 
-/// Laravel-style `dump()` function for debugging
+/// Laravel-inspired `dump()` function for debugging
 /// Dumps the given value in a pretty format but continues execution
 ///
 /// # Examples

@@ -1,4 +1,4 @@
-# WebRust – Laravel-style Rust mini framework (with **Rune** CLI)
+# WebRust – Laravel-inspired Rust mini framework (with **Rune** CLI)
 
 You wanted: *"a Rust framework like Laravel, with middleware, validation,
 models, routes, views, controllers and artisan-style commands, but called **rune**."*
@@ -284,7 +284,7 @@ pub struct User {
 
 ## 10. Debugging (dd, dump, debug)
 
-WebRust includes Laravel-style debugging helpers:
+WebRust includes Laravel-inspired debugging helpers:
 
 ```rust
 use crate::prelude::*;
@@ -392,6 +392,18 @@ cargo run -- rune make:package my-package
 ```
 
 See [docs/PACKAGES.md](docs/PACKAGES.md) for details.
+
+## 19. Caching
+
+WebRust supports multiple cache drivers (Redis, File, Memory) with a unified API.
+
+```rust
+let value = state.cache.remember("key", 60, || async {
+    // Compute value...
+}).await?;
+```
+
+See [docs/CACHE.md](docs/CACHE.md) for details.
 
 ---
 

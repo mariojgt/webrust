@@ -12,15 +12,19 @@ mod prelude;
 mod orbit;
 mod config;
 mod support;
+pub mod cache;
+pub mod database;
 
 use clap::Parser;
 use crate::cli::{Cli, Command, RuneCommand};
 use crate::framework::{AppState, build_tera, build_pool};
 use crate::routes::router;
+use crate::cache::{Cache, RedisCache, FileCache, MemoryCache};
 use tracing_subscriber::EnvFilter;
 use std::process::{Command as ProcessCommand, Child};
 use notify::{Watcher, RecursiveMode};
 use std::sync::mpsc::channel;
+use std::sync::Arc;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -85,8 +89,34 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         }
                     };
 
+                    // Initialize Cache
+                    let cache_driver = std::env::var("CACHE_DRIVER").unwrap_or_else(|_| "file".to_string());
+                    let cache: Cache = match cache_driver.as_str() {
+                        "redis" => {
+                            let redis_url = std::env::var("REDIS_URL").expect("REDIS_URL must be set when CACHE_DRIVER is redis");
+                            match RedisCache::new(&redis_url).await {
+                                Ok(c) => {
+                                    tracing::info!("✅ Redis Cache connected");
+                                    Cache::Redis(c)
+                                }
+                                Err(e) => {
+                                    tracing::error!("❌ Failed to connect to Redis: {}", e);
+                                    panic!("Failed to connect to Redis");
+                                }
+                            }
+                        }
+                        "file" => {
+                            tracing::info!("✅ Using File Cache (storage/cache)");
+                            Cache::File(FileCache::new("storage/cache"))
+                        }
+                        _ => {
+                            tracing::info!("✅ Using Memory Cache");
+                            Cache::Memory(MemoryCache::new())
+                        }
+                    };
+
                     let tera = build_tera()?;
-                    let state = AppState::new(pool, tera);
+                    let state = AppState::new(pool, tera, cache);
 
                     let app = router(state);
 
