@@ -6,6 +6,9 @@ hero:
   name: "WebRust"
   text: "Laravel-inspired Rust Framework"
   tagline: Build robust web applications with the elegance of Laravel and the power of Rust.
+  image:
+    src: /webrust/webrust-hero.png
+    alt: WebRust Framework
   actions:
     - theme: brand
       text: Get Started

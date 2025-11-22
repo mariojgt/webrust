@@ -5,11 +5,37 @@ export default defineConfig({
   title: "WebRust",
   description: "A Laravel-inspired Rust mini framework",
   base: '/webrust/', // Assuming repository name is 'webrust'. Change if different.
+  lastUpdated: true,
+  cleanUrls: true,
+  sitemap: {
+    hostname: 'https://mariojgt.github.io/webrust'
+  },
   head: [
     ['link', { rel: 'preconnect', href: 'https://fonts.googleapis.com' }],
     ['link', { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' }],
-    ['link', { href: 'https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,300..900;1,300..900&display=swap', rel: 'stylesheet' }]
+    ['link', { href: 'https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,300..900;1,300..900&display=swap', rel: 'stylesheet' }],
+    ['link', { rel: 'icon', href: '/webrust/favicon.ico' }],
+    ['meta', { name: 'theme-color', content: '#22c55e' }],
+    ['meta', { name: 'og:type', content: 'website' }],
+    ['meta', { name: 'og:locale', content: 'en' }],
+    ['meta', { name: 'og:site_name', content: 'WebRust' }],
+    ['meta', { name: 'og:image', content: 'https://mariojgt.github.io/webrust/webrust-hero.png' }],
+    ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
+    ['meta', { name: 'twitter:image', content: 'https://mariojgt.github.io/webrust/webrust-hero.png' }],
   ],
+  transformHead({ pageData }) {
+    const title = pageData.title ? `${pageData.title} | WebRust` : 'WebRust'
+    const description = pageData.description || "A Laravel-inspired Rust mini framework"
+    const url = `https://mariojgt.github.io/webrust/${pageData.relativePath.replace(/((^|\/)index)?\.md$/, '$2')}`
+
+    return [
+      ['meta', { property: 'og:title', content: title }],
+      ['meta', { property: 'og:description', content: description }],
+      ['meta', { property: 'og:url', content: url }],
+      ['meta', { name: 'twitter:title', content: title }],
+      ['meta', { name: 'twitter:description', content: description }],
+    ]
+  },
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
     nav: [
