@@ -299,24 +299,25 @@ dump!(user);
 debug!("User Info", user);
 ```
 
-See [DEBUG_QUICK_REF.md](DEBUG_QUICK_REF.md) for more details.
+See [docs/DEBUG_QUICK_REF.md](docs/DEBUG_QUICK_REF.md) for more details.
 
 ---
 
 ## 11. Docker Support
 
-You can run the entire stack (App + MySQL) using Docker Compose.
+You can run the entire stack (App + MySQL + Redis) using Docker Compose.
 
 ```bash
-docker-compose up --build
+make up
 ```
 
 This will:
-- Build the Rust application (release mode)
-- Start a MySQL 8.0 container
+- Build the Frontend (Vue/Vite)
+- Build the Backend (Rust)
+- Start MySQL & Redis
 - Bind the app to `http://localhost:8000`
 
-The database data is persisted in a docker volume `db_data`.
+See `Makefile` for more commands.
 
 ---
 
@@ -343,7 +344,7 @@ let users = User::query()
     .await?;
 ```
 
-See [ORBIT.md](ORBIT.md) for full documentation.
+See [docs/ORBIT.md](docs/ORBIT.md) for full documentation.
 
 ---
 
@@ -351,16 +352,16 @@ See [ORBIT.md](ORBIT.md) for full documentation.
 
 WebRust protects your application from CSRF attacks using the `X-CSRF-TOKEN` header.
 
-See [CSRF.md](CSRF.md) for usage instructions.
+See [docs/CSRF.md](docs/CSRF.md) for usage instructions.
 
 ---
 
 ## 14. Mail, Queues & Scheduling
 
 WebRust now supports:
-- **Mail**: SMTP support via `lettre`. See [MAIL.md](MAIL.md).
-- **Queues**: Redis-backed job queues. See [QUEUES.md](QUEUES.md).
-- **Scheduling**: Cron-based task scheduling. See [SCHEDULER.md](SCHEDULER.md).
+- **Mail**: SMTP support via `lettre`. See [docs/MAIL.md](docs/MAIL.md).
+- **Queues**: Redis-backed job queues. See [docs/QUEUES.md](docs/QUEUES.md).
+- **Scheduling**: Cron-based task scheduling. See [docs/SCHEDULER.md](docs/SCHEDULER.md).
 
 ## 15. Authentication
 
@@ -370,11 +371,17 @@ WebRust can scaffold a full authentication system (Login, Register, Logout) for 
 cargo run -- rune make:auth
 ```
 
-See [AUTH.md](AUTH.md) for details.
+See [docs/AUTH.md](docs/AUTH.md) for details.
 
 ## 16. Controllers & Views Guide
 
-For a step-by-step guide on creating controllers, rendering views, and building JSON APIs, see [BASICS.md](BASICS.md).
+For a step-by-step guide on creating controllers, rendering views, and building JSON APIs, see [docs/BASICS.md](docs/BASICS.md).
+
+## 17. Inertia.js (Modern Frontend)
+
+WebRust supports Inertia.js for building modern SPAs with Vue/React while keeping server-side routing.
+
+See [docs/INERTIA.md](docs/INERTIA.md) for details.
 
 ---
 
