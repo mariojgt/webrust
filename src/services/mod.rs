@@ -6,3 +6,4 @@ pub mod flash;
 pub mod validation;
 pub mod queue;
 pub mod scheduler;
+pub mod http;

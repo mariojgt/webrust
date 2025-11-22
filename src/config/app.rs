@@ -6,6 +6,7 @@ pub struct AppConfig {
     pub env: String,
     pub debug: bool,
     pub url: String,
+    pub key: String,
 }
 
 impl Default for AppConfig {
@@ -15,6 +16,7 @@ impl Default for AppConfig {
             env: std::env::var("APP_ENV").unwrap_or_else(|_| "local".to_string()),
             debug: std::env::var("APP_DEBUG").unwrap_or_else(|_| "true".to_string()) == "true",
             url: std::env::var("APP_URL").unwrap_or_else(|_| "http://localhost:8000".to_string()),
+            key: std::env::var("APP_KEY").expect("APP_KEY must be set in .env file"),
         }
     }
 }

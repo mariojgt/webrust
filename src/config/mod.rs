@@ -3,6 +3,7 @@ pub mod csrf;
 pub mod mail;
 pub mod queue;
 pub mod database;
+pub mod session;
 
 #[derive(Debug, Clone)]
 pub struct Config {
@@ -11,6 +12,7 @@ pub struct Config {
     pub mail: mail::MailConfig,
     pub queue: queue::QueueConfig,
     pub database: database::DatabaseConfig,
+    pub session: session::SessionConfig,
 }
 
 impl Config {
@@ -21,6 +23,7 @@ impl Config {
             mail: mail::MailConfig::default(),
             queue: queue::QueueConfig::default(),
             database: database::DatabaseConfig::default(),
+            session: session::SessionConfig::default(),
         }
     }
 }

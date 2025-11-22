@@ -2,11 +2,47 @@ use serde::{Serialize, Deserialize};
 use crate::config::queue::QueueConfig;
 use redis::Commands;
 use async_trait::async_trait;
+use std::collections::HashMap;
+use std::future::Future;
+use std::pin::Pin;
+use std::sync::Arc;
 
 #[async_trait]
 pub trait Job: Serialize + for<'de> Deserialize<'de> + Send + Sync {
     async fn handle(&self) -> Result<(), String>;
     fn name(&self) -> String;
+}
+
+// Type alias for the handler function
+type JobHandler = Box<dyn Fn(String) -> Pin<Box<dyn Future<Output = Result<(), String>> + Send>> + Send + Sync>;
+
+pub struct JobRegistry {
+    handlers: HashMap<String, JobHandler>,
+}
+
+impl JobRegistry {
+    pub fn new() -> Self {
+        Self {
+            handlers: HashMap::new(),
+        }
+    }
+
+    pub fn register<J: Job + 'static + Clone>(&mut self, name: &str) {
+        self.handlers.insert(name.to_string(), Box::new(|payload: String| {
+            Box::pin(async move {
+                let job: J = serde_json::from_str(&payload).map_err(|e| format!("Deserialization error: {}", e))?;
+                job.handle().await
+            })
+        }));
+    }
+
+    pub async fn execute(&self, name: &str, payload: String) -> Result<(), String> {
+        if let Some(handler) = self.handlers.get(name) {
+            handler(payload).await
+        } else {
+            Err(format!("No handler registered for job: {}", name))
+        }
+    }
 }
 
 pub struct Queue;
@@ -42,7 +78,7 @@ impl Queue {
         }
     }
 
-    pub async fn work(config: &QueueConfig) -> Result<(), String> {
+    pub async fn work(config: &QueueConfig, registry: Arc<JobRegistry>) -> Result<(), String> {
         println!("👷 Starting queue worker for queue: {}", config.queue_name);
 
         match config.driver.as_str() {
@@ -57,9 +93,39 @@ impl Queue {
 
                     match result {
                         Ok((_list, json_str)) => {
-                            println!("📥 Processing job: {}", json_str);
-                            // In a real implementation, we would deserialize and execute the job here.
-                            // For now, we just acknowledge receipt.
+                            // Parse the JSON wrapper
+                            let wrapper: serde_json::Value = match serde_json::from_str(&json_str) {
+                                Ok(v) => v,
+                                Err(e) => {
+                                    eprintln!("❌ Invalid JSON in queue: {}", e);
+                                    continue;
+                                }
+                            };
+
+                            let job_name = match wrapper.get("job").and_then(|v| v.as_str()) {
+                                Some(n) => n,
+                                None => {
+                                    eprintln!("❌ Job name missing in queue item");
+                                    continue;
+                                }
+                            };
+
+                            let payload = match wrapper.get("payload").and_then(|v| v.as_str()) {
+                                Some(p) => p.to_string(),
+                                None => {
+                                    // Fallback: maybe the payload is the object itself if not stringified?
+                                    // For now assume stringified as per dispatch
+                                    eprintln!("❌ Payload missing in queue item");
+                                    continue;
+                                }
+                            };
+
+                            println!("📥 Processing job: {}", job_name);
+                            
+                            match registry.execute(job_name, payload).await {
+                                Ok(_) => println!("✅ Job {} completed", job_name),
+                                Err(e) => eprintln!("❌ Job {} failed: {}", job_name, e),
+                            }
                         }
                         Err(e) => {
                             eprintln!("Redis error: {}", e);

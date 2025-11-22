@@ -118,7 +118,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let tera = build_tera()?;
                     let state = AppState::new(pool, tera, cache);
 
-                    let app = router(state);
+                    let app = router(state).await;
 
                     let addr = format!("{}:{}", host, port);
                     tracing::info!("🚀 WebRust running at http://{}", addr);
@@ -155,7 +155,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let mut queue_config = config.queue.clone();
                     queue_config.queue_name = queue;
 
-                    if let Err(e) = crate::services::queue::Queue::work(&queue_config).await {
+                    // Register jobs here
+                    let mut registry = crate::services::queue::JobRegistry::new();
+                    registry.register::<crate::services::mail::SendEmailJob>("SendEmailJob");
+
+                    if let Err(e) = crate::services::queue::Queue::work(&queue_config, Arc::new(registry)).await {
                         eprintln!("Queue worker failed: {}", e);
                     }
                 }

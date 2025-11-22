@@ -36,6 +36,7 @@ export default defineConfig({
           { text: 'Inertia.js', link: '/INERTIA' },
           { text: 'Caching', link: '/CACHE' },
           { text: 'Validation', link: '/VALIDATION' },
+          { text: 'HTTP Client', link: '/HTTP' },
           { text: 'Storage', link: '/STORAGE' },
           { text: 'Packages', link: '/PACKAGES' },
         ]

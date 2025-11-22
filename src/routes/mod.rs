@@ -13,37 +13,72 @@ use crate::http::panic::handle_panic;
 use tower_sessions::{SessionManagerLayer, MemoryStore, Expiry};
 use tower_sessions::cookie::Key;
 use tower_sessions::cookie::time::Duration;
+use tower_http::cors::CorsLayer;
+use tower_http::compression::CompressionLayer;
+
+#[cfg(feature = "mysql")]
+use tower_sessions_sqlx_store::MySqlStore as SqlxStore;
+#[cfg(feature = "postgres")]
+use tower_sessions_sqlx_store::PostgresStore as SqlxStore;
+#[cfg(feature = "sqlite")]
+use tower_sessions_sqlx_store::SqliteStore as SqlxStore;
 
 /// Combine all route groups and apply global middleware
-pub fn router(state: AppState) -> Router {
+pub async fn router(state: AppState) -> Router {
     let web_routes = web::web(state.clone())
         .layer(axum::middleware::from_fn_with_state(state.clone(), share_inertia_data))
         .layer(axum::middleware::from_fn_with_state(state.clone(), csrf_protection));
 
-    let api_routes = api::api(state.clone());
+    let api_routes = api::api(state.clone())
+        .layer(CorsLayer::permissive()); // Allow all origins for API
 
     // Serve static files from "public" directory
     let static_files = ServeDir::new("public");
     let build_files = ServeDir::new("public/build");
 
     // Session Config
-    let store = MemoryStore::default();
-    // In production, load this from .env
-    let secret = "0123456789012345678901234567890123456789012345678901234567890123";
-    let key = Key::from(secret.as_bytes());
+    let key = Key::from(state.config.app.key.as_bytes());
+    let lifetime = state.config.session.lifetime;
 
-    let session_layer = SessionManagerLayer::new(store)
-        .with_secure(false) // Set to true in production with HTTPS
-        .with_expiry(Expiry::OnInactivity(Duration::seconds(3600)))
-        .with_signed(key);
-
-    Router::new()
+    let app = Router::new()
         .merge(web_routes)
         .merge(api_routes)
         .nest_service("/public", static_files)
         .nest_service("/build", build_files)
-        .fallback(any(not_found).with_state(state))
-        .layer(session_layer)
+        .fallback(any(not_found).with_state(state.clone()))
         .layer(CatchPanicLayer::custom(handle_panic))
         .layer(axum::middleware::from_fn(log_request))
+        .layer(CompressionLayer::new()); // Global compression
+
+    match state.config.session.driver.as_str() {
+        "database" => {
+            if let Some(pool) = &state.db {
+                let store = SqlxStore::new(pool.clone());
+                store.migrate().await.expect("Failed to migrate session store");
+                
+                let session_layer = SessionManagerLayer::new(store)
+                    .with_secure(false) // Set to true in production with HTTPS
+                    .with_expiry(Expiry::OnInactivity(Duration::seconds(lifetime)))
+                    .with_signed(key);
+                
+                app.layer(session_layer)
+            } else {
+                tracing::warn!("⚠️ Database session driver selected but no database connection available. Falling back to memory.");
+                let store = MemoryStore::default();
+                let session_layer = SessionManagerLayer::new(store)
+                    .with_secure(false)
+                    .with_expiry(Expiry::OnInactivity(Duration::seconds(lifetime)))
+                    .with_signed(key);
+                app.layer(session_layer)
+            }
+        },
+        _ => {
+            let store = MemoryStore::default();
+            let session_layer = SessionManagerLayer::new(store)
+                .with_secure(false)
+                .with_expiry(Expiry::OnInactivity(Duration::seconds(lifetime)))
+                .with_signed(key);
+            app.layer(session_layer)
+        }
+    }
 }
