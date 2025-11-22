@@ -9,6 +9,8 @@ mod services;
 mod cli;
 mod debug;
 mod prelude;
+mod orbit;
+mod config;
 
 use clap::Parser;
 use crate::cli::{Cli, Command, RuneCommand};
@@ -32,6 +34,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     println!("🚀 Starting WebRust Dev Server...");
                     println!("📍 Listening on http://{}:{}", host, port);
                     println!("💾 Watching for changes in src/ and templates/...");
+                    println!("🛑 Press Ctrl+C to stop");
 
                     let (tx, rx) = channel();
                     let mut watcher = notify::recommended_watcher(tx)?;
@@ -107,8 +110,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 RuneCommand::MakeRequest { name } => {
                     cli::make_request(&name)?;
                 }
+                RuneCommand::MakeMigration { name } => {
+                    cli::make_migration(&name)?;
+                }
                 RuneCommand::Migrate => {
                     cli::run_migrations().await?;
+                }
+                RuneCommand::MigrateRollback => {
+                    cli::rollback_migrations().await?;
                 }
             }
         }
@@ -118,8 +127,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn spawn_server(host: &str, port: u16) -> Child {
-    ProcessCommand::new("cargo")
-        .args(&["run", "--", "rune", "serve", "--host", host, "--port", &port.to_string()])
-        .spawn()
+    let mut cmd = ProcessCommand::new("cargo");
+    cmd.args(&["run", "--", "rune", "serve", "--host", host, "--port", &port.to_string()]);
+
+    // Ensure we see colors in the output
+    cmd.env("CARGO_TERM_COLOR", "always");
+
+    // Set default log level to see request logs if not set by user
+    if std::env::var("RUST_LOG").is_err() {
+        cmd.env("RUST_LOG", "webrust=info,tower_http=debug,info");
+    }
+
+    cmd.spawn()
         .expect("Failed to start server")
 }

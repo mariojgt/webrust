@@ -3,11 +3,13 @@ use std::sync::Arc;
 
 use sqlx::mysql::{MySqlPool, MySqlPoolOptions};
 use tera::Tera;
+use crate::config::Config;
 
 #[derive(Clone)]
 pub struct AppState {
     pub db: Option<MySqlPool>,
     pub templates: Arc<Tera>,
+    pub config: Arc<Config>,
 }
 
 impl AppState {
@@ -15,6 +17,7 @@ impl AppState {
         Self {
             db,
             templates: Arc::new(templates),
+            config: Arc::new(Config::new()),
         }
     }
 }

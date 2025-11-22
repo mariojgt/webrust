@@ -5,6 +5,7 @@ use axum::{Router, routing::any};
 use tower_http::services::ServeDir;
 use crate::framework::AppState;
 use crate::http::middleware::log_request;
+use crate::http::middleware::csrf_protection;
 use crate::controllers::error::not_found;
 use tower_http::catch_panic::CatchPanicLayer;
 use crate::http::panic::handle_panic;
@@ -14,7 +15,9 @@ use tower_sessions::cookie::time::Duration;
 
 /// Combine all route groups and apply global middleware
 pub fn router(state: AppState) -> Router {
-    let web_routes = web::web(state.clone());
+    let web_routes = web::web(state.clone())
+        .layer(axum::middleware::from_fn_with_state(state.clone(), csrf_protection));
+        
     let api_routes = api::api(state.clone());
 
     // Serve static files from "public" directory

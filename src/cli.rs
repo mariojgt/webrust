@@ -74,8 +74,17 @@ pub enum RuneCommand {
         name: String,
     },
 
+    /// Create a new migration file
+    MakeMigration {
+        /// Name of the migration (e.g. create_users_table)
+        name: String,
+    },
+
     /// Run database migrations
     Migrate,
+
+    /// Rollback the last database migration
+    MigrateRollback,
 }
 
 pub async fn run_setup() -> Result<(), Box<dyn std::error::Error>> {
@@ -345,6 +354,39 @@ pub async fn run_migrations() -> Result<(), Box<dyn std::error::Error>> {
     match status {
         Ok(s) if s.success() => println!("✅ Migrations completed successfully"),
         Ok(_) => println!("❌ Migrations failed"),
+        Err(_) => println!("❌ Could not run 'sqlx'. Is it installed? (cargo install sqlx-cli)"),
+    }
+    Ok(())
+}
+
+pub fn make_migration(name: &str) -> io::Result<()> {
+    let now = chrono::Utc::now();
+    let timestamp = now.format("%Y%m%d%H%M%S").to_string();
+    let filename = format!("{}_{}.sql", timestamp, to_snake_case(name));
+
+    let migrations_dir = Path::new("migrations");
+    fs::create_dir_all(&migrations_dir)?;
+
+    let file_path = migrations_dir.join(&filename);
+
+    let contents = "-- Add migration script here\n";
+
+    fs::write(&file_path, contents)?;
+    println!("Created migration: {:?}", file_path);
+
+    Ok(())
+}
+
+pub async fn rollback_migrations() -> Result<(), Box<dyn std::error::Error>> {
+    println!("Rolling back migrations...");
+    let status = std::process::Command::new("sqlx")
+        .arg("migrate")
+        .arg("revert")
+        .status();
+
+    match status {
+        Ok(s) if s.success() => println!("✅ Rollback completed successfully"),
+        Ok(_) => println!("❌ Rollback failed"),
         Err(_) => println!("❌ Could not run 'sqlx'. Is it installed? (cargo install sqlx-cli)"),
     }
     Ok(())

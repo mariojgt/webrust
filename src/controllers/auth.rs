@@ -5,7 +5,7 @@ use axum::response::{IntoResponse, Redirect};
 pub async fn login_form(State(state): State<AppState>, session: Session) -> impl IntoResponse {
     let mut ctx = Context::new();
     ctx.insert("title", "Login");
-    
+
     // Pass flash messages to view
     let messages = Flash::get_all(&session).await;
     ctx.insert("flash_messages", &messages);
@@ -19,10 +19,10 @@ pub async fn login(
     session: Session,
     FormRequest(req): FormRequest<LoginRequest>
 ) -> impl IntoResponse {
-    // In a real app, you'd check the database. 
+    // In a real app, you'd check the database.
     // For this demo, we'll mock a successful login if email is "admin@example.com" and password is "password"
     // OR if the database check passes (if you have the DB set up).
-    
+
     let mut logged_in = false;
 
     if let Some(pool) = &state.db {

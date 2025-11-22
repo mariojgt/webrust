@@ -2,6 +2,7 @@ use chrono::{DateTime, Utc};
 use serde::Serialize;
 use sqlx::FromRow;
 use sqlx::mysql::MySqlPool;
+use crate::orbit::Orbit;
 
 #[derive(Debug, Serialize, FromRow)]
 pub struct User {
@@ -13,21 +14,18 @@ pub struct User {
     pub created_at: DateTime<Utc>,
 }
 
-impl User {
-    pub async fn all(pool: &MySqlPool) -> Result<Vec<User>, sqlx::Error> {
-        let users = sqlx::query_as::<_, User>(
-            r#"
-            SELECT id, name, email, NULL as password, created_at
-            FROM users
-            ORDER BY id DESC
-            "#
-        )
-        .fetch_all(pool)
-        .await?;
-
-        Ok(users)
+impl Orbit for User {
+    fn table_name() -> &'static str {
+        "users"
     }
 
+    fn id(&self) -> i64 {
+        self.id
+    }
+}
+
+impl User {
+    // Custom methods can still exist
     pub async fn find_by_email(pool: &MySqlPool, email: &str) -> Result<Option<User>, sqlx::Error> {
         sqlx::query_as::<_, User>("SELECT * FROM users WHERE email = ?")
             .bind(email)

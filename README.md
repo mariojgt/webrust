@@ -131,7 +131,9 @@ cargo run -- rune <command> [options]
 - `rune serve` – start the production HTTP server
 - `rune make-controller <Name>` – generate a controller scaffold
 - `rune make-model <Name>` – generate a model scaffold
+- `rune make:migration <Name>` – create a new migration file
 - `rune migrate` – run database migrations
+- `rune migrate:rollback` – rollback the last migration
 
 Examples:
 
@@ -139,14 +141,8 @@ Examples:
 # setup
 cargo run -- rune setup
 
-# dev server
-cargo run -- rune dev
-
-# generate Blog controller
-cargo run -- rune make-controller Blog
-
-# generate Post model
-cargo run -- rune make-model Post
+# create a migration
+cargo run -- rune make:migration create_posts_table
 
 # run migrations
 cargo run -- rune migrate
@@ -304,6 +300,58 @@ debug!("User Info", user);
 ```
 
 See [DEBUG_QUICK_REF.md](DEBUG_QUICK_REF.md) for more details.
+
+---
+
+## 11. Docker Support
+
+You can run the entire stack (App + MySQL) using Docker Compose.
+
+```bash
+docker-compose up --build
+```
+
+This will:
+- Build the Rust application (release mode)
+- Start a MySQL 8.0 container
+- Bind the app to `http://localhost:8000`
+
+The database data is persisted in a docker volume `db_data`.
+
+---
+
+## 12. Orbit ORM
+
+WebRust includes **Orbit**, a powerful ORM inspired by Laravel Eloquent. It provides a fluent query builder and Active Record pattern implementation.
+
+```rust
+// Find a user
+let user = User::find(&pool, 1).await?;
+
+// Create a user
+User::create(&pool, NewUser {
+    name: "Mario".to_string(),
+    email: "mario@example.com".to_string(),
+}).await?;
+
+// Fluent Query Builder
+let users = User::query()
+    .where_eq("active", true)
+    .order_by("created_at", "DESC")
+    .limit(10)
+    .get(&pool)
+    .await?;
+```
+
+See [ORBIT.md](ORBIT.md) for full documentation.
+
+---
+
+## 13. CSRF Protection
+
+WebRust protects your application from CSRF attacks using the `X-CSRF-TOKEN` header.
+
+See [CSRF.md](CSRF.md) for usage instructions.
 
 ---
 
