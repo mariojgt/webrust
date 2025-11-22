@@ -5,6 +5,7 @@ mod controllers;
 mod models;
 mod http;
 mod requests;
+mod services;
 mod cli;
 mod debug;
 mod prelude;
