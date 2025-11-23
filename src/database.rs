@@ -2,6 +2,9 @@ use sqlx::Pool;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+pub mod migrations;
+pub mod migrator;
+
 #[cfg(feature = "mysql")]
 pub type Db = sqlx::MySql;
 #[cfg(feature = "mysql")]

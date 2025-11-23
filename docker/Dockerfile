@@ -66,6 +66,7 @@ COPY --from=frontend /app/public/build /app/public/build
 # Copy other static assets and templates
 COPY --from=backend /app/templates /app/templates
 COPY public /app/public
+COPY migrations /app/migrations
 
 # Copy environment file (ensure you have .env or handle this via docker-compose)
 COPY .env.example /app/.env

@@ -4,51 +4,43 @@ WebRust uses `sqlx` for migrations, but provides a Laravel-like CLI wrapper to m
 
 ## 1. Creating a Migration
 
-To create a new migration file, use the `make:migration` command:
+**⚠️ Important:** Because WebRust migrations are compiled Rust code, you must run this command on your **host machine**, not inside Docker.
 
 ```bash
 cargo run -- rune make:migration create_posts_table
 ```
 
-This will create a file in `migrations/` with a timestamp, e.g.:
-`migrations/20231122120000_create_posts_table.sql`
+This will:
+1.  Create a new Rust file in `src/database/migrations/`.
+2.  Auto-register it in `src/database/migrations/mod.rs`.
 
-## 2. Writing Migrations
+## 2. Rebuilding
 
-Open the generated `.sql` file and write your SQL.
+Since migrations are code, you must recompile your application to include them.
 
-```sql
--- migrations/20231122120000_create_posts_table.sql
-
-CREATE TABLE posts (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    title VARCHAR(255) NOT NULL,
-    content TEXT NOT NULL,
-    user_id BIGINT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
+```bash
+# If using Docker
+make build
+make up
 ```
 
 ## 3. Running Migrations
 
-To apply pending migrations:
+Once rebuilt, you can run the migrations (inside Docker or on host).
 
 ```bash
-cargo run -- rune migrate
+# Inside Docker
+make shell
+./webrust rune migrate
 ```
-
-This runs `sqlx migrate run` under the hood.
 
 ## 4. Rolling Back
 
-To revert the last batch of migrations:
+To revert the last migration (executes `.down.sql` files):
 
 ```bash
 cargo run -- rune migrate:rollback
 ```
-
-This runs `sqlx migrate revert`.
 
 ---
 

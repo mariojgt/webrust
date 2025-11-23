@@ -94,3 +94,41 @@ async fn handle(&self, _args: Vec<String>) -> Result<(), Box<dyn std::error::Err
     Ok(())
 }
 ```
+
+## Running Commands in Docker
+
+When running your application in Docker, you don't have access to `cargo`. Instead, you execute the compiled binary directly.
+
+### 1. Enter the Container
+
+First, access the shell of your running container:
+
+```bash
+# Using the Makefile helper
+make shell
+
+# OR using docker-compose directly
+docker-compose -f docker/docker-compose.yml exec app /bin/bash
+```
+
+### 2. Execute Commands
+
+Inside the container, use the `./webrust` binary followed by `rune` and your command:
+
+```bash
+# Run migrations
+./webrust rune migrate
+
+# Run the queue worker
+./webrust rune queue:work
+
+# Run scheduled tasks
+./webrust rune schedule:run
+```
+
+### ⚠️ Important Note on Scaffolding
+
+Commands that generate code (like `make:controller`, `make:model`, etc.) should **NOT** be run inside the Docker container.
+
+*   **Why?** The Docker container runs a compiled binary and does not mount your source code (`src/`) for editing. Any files generated inside the container would be lost when the container stops.
+*   **Solution:** Run scaffolding commands on your **host machine** using `cargo run -- rune make:...`, then rebuild your container if necessary.
