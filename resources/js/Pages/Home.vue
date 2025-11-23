@@ -17,6 +17,10 @@ defineProps({
         This is a full-stack application using Rust and Vue 3 via Inertia.js.
       </p>
 
+      <p class="text-gray-700 mb-4">
+        Php Version {{ phpVersion }}
+      </p>
+
       <div class="bg-gray-50 p-4 rounded border border-gray-200 mb-6">
         <p class="text-sm text-gray-600">Logged in as:</p>
         <p class="font-medium text-gray-900" v-if="user">{{ user.name }}</p>
