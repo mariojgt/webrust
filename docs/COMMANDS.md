@@ -37,7 +37,7 @@ impl Command for SendEmails {
     /// The logic to execute
     async fn handle(&self, args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
         println!("Sending emails...");
-        
+
         // You can access arguments passed to the command
         if let Some(user_id) = args.get(0) {
             println!("Sending to user ID: {}", user_id);
@@ -87,10 +87,10 @@ use crate::models::user::User;
 async fn handle(&self, _args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
     // Establish a DB connection if needed
     let pool = framework::build_pool().await?;
-    
+
     let users = User::all(&pool).await?;
     println!("Found {} users.", users.len());
-    
+
     Ok(())
 }
 ```
@@ -128,7 +128,9 @@ Inside the container, use the `./webrust` binary followed by `rune` and your com
 
 ### ⚠️ Important Note on Scaffolding
 
-Commands that generate code (like `make:controller`, `make:model`, etc.) should **NOT** be run inside the Docker container.
+Commands that generate **Rust code** (like `make:controller`, `make:model`, etc.) should **NOT** be run inside the Docker container.
 
-*   **Why?** The Docker container runs a compiled binary and does not mount your source code (`src/`) for editing. Any files generated inside the container would be lost when the container stops.
-*   **Solution:** Run scaffolding commands on your **host machine** using `cargo run -- rune make:...`, then rebuild your container if necessary.
+*   **Why?** The Docker container runs a compiled binary. While you might see the files if you have a volume mount, the running binary won't know about the new Rust code until you recompile.
+*   **Solution:** Run scaffolding commands on your **host machine** using `cargo run -- rune make:...`.
+
+**Exception:** `make:migration` generates `.sql` files which are read at runtime. You **can** run this inside Docker if your `migrations/` folder is mounted (which is the default setup).

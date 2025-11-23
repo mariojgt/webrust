@@ -1,0 +1,25 @@
+FROM rust:bookworm
+
+WORKDIR /app
+
+# Install system dependencies and mold
+RUN apt-get update --allow-insecure-repositories && \
+    apt-get install -y --allow-unauthenticated \
+    pkg-config \
+    libssl-dev \
+    default-libmysqlclient-dev \
+    mold \
+    clang \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install cargo-watch for hot reloading
+RUN cargo install cargo-watch
+
+# Configure cargo to use mold
+ENV RUSTFLAGS="-C link-arg=-fuse-ld=mold"
+
+# Expose the port
+EXPOSE 8000
+
+# Default command (can be overridden in docker-compose)
+CMD ["cargo", "watch", "-x", "run -- rune serve --host 0.0.0.0"]

@@ -1,0 +1,21 @@
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.dev
+    # Mount the entire project directory to /app
+    volumes:
+      - ..:/app
+      # Use a named volume for target to avoid syncing compiled artifacts with host
+      # This prevents "exec format error" (Linux vs macOS binaries) and improves performance
+      - cargo_target:/app/target
+      - cargo_registry:/usr/local/cargo/registry
+    environment:
+      - APP_ENV=local
+      - RUST_LOG=debug
+      - RUST_BACKTRACE=1
+    command: cargo watch -x "run -- rune serve --host 0.0.0.0"
+
+volumes:
+  cargo_target:
+  cargo_registry:

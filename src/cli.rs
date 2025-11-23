@@ -132,7 +132,7 @@ pub async fn run_setup() -> Result<(), Box<dyn std::error::Error>> {
 
     // Check DB connection (optional)
     let db_manager = framework::build_database_manager().await;
-    
+
     if let Some(pool) = db_manager.default_connection() {
         match sqlx::query("SELECT 1").execute(pool).await {
             Ok(_) => println!("✅ Database connection OK"),
@@ -767,9 +767,9 @@ impl Command for {struct_name} {{
     async fn handle(&self, args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {{
         println!("Running command: {{}}", self.name());
         println!("Args: {{:?}}", args);
-        
+
         // Your logic here
-        
+
         Ok(())
     }}
 }}
@@ -784,12 +784,12 @@ impl Command for {struct_name} {{
     let mod_path = commands_dir.join("mod.rs");
     let mod_line = format!("pub mod {module_name};\n");
     append_to_mod_file(&mod_path, &mod_line)?;
-    
+
     // Auto-register in kernel()
     let register_line = format!(
-        "    commands.insert(\"{}\".to_string(), Box::new({}::{}));", 
-        module_name.replace("_", ":"), 
-        module_name, 
+        "    commands.insert(\"{}\".to_string(), Box::new({}::{}));",
+        module_name.replace("_", ":"),
+        module_name,
         struct_name
     );
 
@@ -828,112 +828,60 @@ fn append_to_mod_file(path: &Path, line: &str) -> io::Result<()> {
 
 pub async fn run_migrations() -> Result<(), Box<dyn std::error::Error>> {
     println!("Running migrations...");
-    
+
     let db_manager = framework::build_database_manager().await;
     let migrator = crate::database::migrator::Migrator::new(db_manager);
-    let migrations = crate::database::migrations::get_migrations();
-    
-    match migrator.run(migrations).await {
+
+    match migrator.run(Path::new("migrations")).await {
         Ok(_) => println!("✅ Migrations completed successfully"),
         Err(e) => println!("❌ Migrations failed: {}", e),
     }
-    
+
     Ok(())
 }
 
 pub fn make_migration(name: &str) -> io::Result<()> {
     let now = chrono::Utc::now();
     let timestamp = now.format("%Y%m%d%H%M%S").to_string();
-    let module_name = format!("m{}_{}", timestamp, to_snake_case(name));
-    let struct_name = to_pascal_case(name);
+    let filename = format!("{}_{}.sql", timestamp, to_snake_case(name));
     let table_name = to_snake_case(name);
 
-    let migrations_dir = Path::new("src").join("database").join("migrations");
+    let migrations_dir = Path::new("migrations");
     fs::create_dir_all(&migrations_dir)?;
 
-    let file_path = migrations_dir.join(format!("{}.rs", module_name));
+    let file_path = migrations_dir.join(&filename);
 
     let contents = format!(
-        r#"
-use async_trait::async_trait;
-use crate::database::migrations::Migration;
-use crate::database::DatabaseManager;
-use crate::orbit::schema::Schema;
-use sqlx::Executor;
+        r#"-- Migration: {name}
+-- --- UP ---
+CREATE TABLE {table_name} (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
 
-pub struct {struct_name};
-
-#[async_trait]
-impl Migration for {struct_name} {{
-    fn name(&self) -> &str {{
-        "{module_name}"
-    }}
-
-    async fn up(&self, manager: &DatabaseManager) -> Result<(), sqlx::Error> {{
-        let pool = manager.default_connection().unwrap();
-        
-        let sql = Schema::create("{table_name}", |table| {{
-            table.id();
-            table.string("name");
-            table.timestamps();
-        }});
-        
-        pool.execute(sql.as_str()).await?;
-        Ok(())
-    }}
-
-    async fn down(&self, manager: &DatabaseManager) -> Result<(), sqlx::Error> {{
-        let pool = manager.default_connection().unwrap();
-        let sql = Schema::drop_if_exists("{table_name}");
-        pool.execute(sql.as_str()).await?;
-        Ok(())
-    }}
-}}
+-- --- DOWN ---
+DROP TABLE IF EXISTS {table_name};
 "#
     );
 
     fs::write(&file_path, contents.trim_start())?;
     println!("Created migration: {:?}", file_path);
 
-    // Update mod.rs
-    let mod_path = migrations_dir.join("mod.rs");
-    let mod_line = format!("pub mod {};\n", module_name);
-    append_to_mod_file(&mod_path, &mod_line)?;
-    
-    // Auto-register in get_migrations()
-    let register_line = format!(
-        "    migrations.push(Box::new({}::{}));", 
-        module_name, 
-        struct_name
-    );
-
-    let mut mod_content = fs::read_to_string(&mod_path)?;
-    if !mod_content.contains(&register_line) {
-        if let Some(pos) = mod_content.rfind("migrations\n}") {
-             mod_content.insert_str(pos, &format!("{}\n\n    ", register_line.trim()));
-             fs::write(&mod_path, mod_content)?;
-             println!("✅ Automatically registered migration in src/database/migrations/mod.rs");
-        } else {
-             println!("\n⚠️  Could not auto-register. Please add this line to get_migrations():");
-             println!("{}", register_line);
-        }
-    }
-
     Ok(())
 }
 
 pub async fn rollback_migrations() -> Result<(), Box<dyn std::error::Error>> {
     println!("Rolling back migrations...");
-    
+
     let db_manager = framework::build_database_manager().await;
     let migrator = crate::database::migrator::Migrator::new(db_manager);
-    let migrations = crate::database::migrations::get_migrations();
-    
-    match migrator.rollback(migrations).await {
+
+    match migrator.rollback(Path::new("migrations")).await {
         Ok(_) => println!("✅ Rollback completed successfully"),
         Err(e) => println!("❌ Rollback failed: {}", e),
     }
-    
+
     Ok(())
 }
 

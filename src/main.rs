@@ -179,7 +179,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 RuneCommand::External(args) => {
                     let command_name = args.first().expect("No command specified");
                     let registry = crate::commands::kernel();
-                    
+
                     if let Some(cmd) = registry.get(command_name) {
                         if let Err(e) = cmd.handle(args).await {
                             eprintln!("Command failed: {}", e);

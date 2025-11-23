@@ -7,11 +7,12 @@ use crate::orbit::Orbit;
 #[derive(Debug, Serialize, FromRow)]
 pub struct User {
     pub id: i64,
-    pub name: String,
+    pub username: String,
     pub email: String,
     #[serde(skip)] // Don't serialize password to JSON
-    pub password: Option<String>, // Option because it might not be selected in all queries
-    pub created_at: DateTime<Utc>,
+    pub password_hash: String,
+    pub created_at: Option<DateTime<Utc>>,
+    pub updated_at: Option<DateTime<Utc>>,
 }
 
 impl Orbit for User {

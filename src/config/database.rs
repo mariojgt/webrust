@@ -19,10 +19,10 @@ impl Default for DatabaseConfig {
 
         // Default connection (from env)
         let default_connection = env::var("DB_CONNECTION").unwrap_or_else(|_| "mysql".to_string());
-        
+
         // We can add more presets here, but for now let's just map the env vars to the "default" connection
         // or strictly follow Laravel's style where we have named connections.
-        
+
         // "mysql" connection
         connections.insert("mysql".to_string(), DatabaseConnectionConfig {
             url: env::var("DATABASE_URL").unwrap_or_default(),

@@ -18,11 +18,9 @@ impl Auth {
         let user = User::find_by_email(pool, email).await?;
 
         if let Some(user) = user {
-            if let Some(hash) = &user.password {
-                if crate::services::hash::check(password, hash) {
-                    session.insert(AUTH_SESSION_KEY, user.id).await.unwrap();
-                    return Ok(true);
-                }
+            if crate::services::hash::check(password, &user.password_hash) {
+                session.insert(AUTH_SESSION_KEY, user.id).await.unwrap();
+                return Ok(true);
             }
         }
 

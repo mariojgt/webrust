@@ -2,7 +2,6 @@ use sqlx::Pool;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-pub mod migrations;
 pub mod migrator;
 
 #[cfg(feature = "mysql")]
@@ -51,7 +50,7 @@ impl DatabaseManager {
         let name = name.unwrap_or(&self.default_name);
         self.pools.get(name)
     }
-    
+
     /// Get the default connection
     pub fn default_connection(&self) -> Option<&DbPool> {
         self.connection(None)

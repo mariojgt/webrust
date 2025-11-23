@@ -1,64 +1,82 @@
 # 📦 Migrations
 
-WebRust uses `sqlx` for migrations, but provides a Laravel-like CLI wrapper to make it feel familiar.
+WebRust uses a custom SQL-based migration system that is designed to be simple, fast, and familiar to Laravel developers.
+
+Unlike previous versions, migrations are now **runtime SQL files**, meaning you do **not** need to recompile your application to run new migrations.
 
 ## 1. Creating a Migration
 
-**⚠️ Important:** Because WebRust migrations are compiled Rust code, you must run this command on your **host machine**, not inside Docker.
+You can create a new migration using the CLI. This works both on your host machine and inside Docker.
 
 ```bash
+# On host
 cargo run -- rune make:migration create_posts_table
+
+# Inside Docker
+./webrust rune make:migration create_posts_table
 ```
 
-This will:
-1.  Create a new Rust file in `src/database/migrations/`.
-2.  Auto-register it in `src/database/migrations/mod.rs`.
+This will create a new `.sql` file in the `migrations/` directory with a timestamp prefix, for example: `migrations/20240520120000_create_posts_table.sql`.
 
-## 2. Rebuilding
+## 2. Migration File Format
 
-Since migrations are code, you must recompile your application to include them.
+Migration files are plain SQL files that contain both the "up" (apply) and "down" (revert) logic, separated by a special comment.
 
-```bash
-# If using Docker
-make build
-make up
+```sql
+-- Migration: create_posts_table
+-- --- UP ---
+CREATE TABLE posts (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    content TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- --- DOWN ---
+DROP TABLE IF EXISTS posts;
 ```
+
+The `Migrator` parses this file at runtime, splitting it by the `-- --- DOWN ---` marker.
 
 ## 3. Running Migrations
 
-Once rebuilt, you can run the migrations (inside Docker or on host).
+To apply pending migrations:
 
 ```bash
+# On host
+cargo run -- rune migrate
+
 # Inside Docker
-make shell
 ./webrust rune migrate
 ```
 
+This will:
+1.  Create the `migrations` table if it doesn't exist.
+2.  Read all `.sql` files from the `migrations/` directory.
+3.  Check which ones have already been run.
+4.  Execute the `UP` section of any new migrations.
+
 ## 4. Rolling Back
 
-To revert the last migration (executes `.down.sql` files):
+To revert the last batch of migrations:
 
 ```bash
+# On host
 cargo run -- rune migrate:rollback
+
+# Inside Docker
+./webrust rune migrate:rollback
 ```
 
----
+This will execute the `DOWN` section of the migrations in the last batch and remove them from the `migrations` table.
 
-## 💡 Schema Builder (Experimental)
+## 5. Docker Workflow
 
-If you need to generate SQL dynamically in your Rust code (e.g. for a plugin system or setup script), you can use the `Orbit::Schema` builder.
+Because the `migrations/` directory is mounted as a volume in Docker, you can create migration files on your host machine, and they will be immediately available inside the container.
 
-```rust
-use crate::orbit::schema::Schema;
+1.  **Create:** `cargo run -- rune make:migration add_users` (on host)
+2.  **Edit:** Open the new SQL file in your editor and write your SQL.
+3.  **Run:** `make shell` -> `./webrust rune migrate` (inside container)
 
-let sql = Schema::create("posts", |table| {
-    table.id();
-    table.string("title");
-    table.text("content");
-    table.timestamps();
-});
-
-println!("{}", sql);
-```
-
-This will output the standard MySQL `CREATE TABLE` statement.
+No `docker-compose build` or restart is required!

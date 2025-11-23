@@ -49,11 +49,11 @@ Creates `src/models/post.rs` with basic CRUD methods (`all`, `find`).
 ```bash
 cargo run -- rune migrate
 ```
-Runs pending database migrations (wraps `sqlx migrate run`).
+Runs pending database migrations. WebRust uses a custom runtime SQL migration system, so no recompilation is needed.
 
 ### Other Commands
-- `rune make:migration <Name>` – create a new migration file
-- `rune migrate:rollback` – rollback the last migration
+- `rune make:migration <Name>` – create a new SQL migration file
+- `rune migrate:rollback` – rollback the last batch of migrations
 - `rune make:auth` – scaffold authentication (login/register)
 - `rune make:package <Name>` – scaffold a new package
 - `rune queue:work` – start the queue worker

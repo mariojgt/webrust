@@ -10,12 +10,17 @@ To make a struct an Orbit model, it must implement `sqlx::FromRow`, `serde::Seri
 use crate::orbit::Orbit;
 use sqlx::FromRow;
 use serde::Serialize;
+use chrono::{DateTime, Utc};
 
 #[derive(Debug, Serialize, FromRow)]
 pub struct User {
     pub id: i64,
-    pub name: String,
+    pub username: String,
     pub email: String,
+    #[serde(skip)]
+    pub password_hash: String,
+    pub created_at: Option<DateTime<Utc>>,
+    pub updated_at: Option<DateTime<Utc>>,
 }
 
 impl Orbit for User {
@@ -31,6 +36,9 @@ impl Orbit for User {
 
     // Optional: Override if your primary key is not "id"
     // fn primary_key() -> &'static str { "user_id" }
+
+    // Optional: Specify a specific database connection (defaults to default)
+    // fn connection() -> Option<&'static str> { Some("sqlite") }
 }
 ```
 
@@ -38,28 +46,33 @@ impl Orbit for User {
 
 ## 2. Retrieving Data
 
+Orbit methods generally take a reference to `DatabaseManager` (available in `state.db_manager`), which automatically handles connection selection.
+
 ### Basic Methods
 
 ```rust
 // Get all records
-let users = User::all(&pool).await?;
+let users = User::all(&state.db_manager).await?;
 
 // Find by Primary Key
-let user = User::find(&pool, 1).await?;
+let user = User::find(&state.db_manager, 1).await?;
 ```
 
 ### Query Builder
 
-Orbit provides a fluent query builder for more complex queries.
+Orbit provides a fluent query builder for more complex queries. Note that the builder's final execution methods (`get`, `first`) require a `&DbPool`, not the manager.
 
 ```rust
+// Get the pool (either default or specific)
+let pool = state.db_manager.default_connection().unwrap();
+
 let users = User::query()
-    .select(&["id", "name"])      // Optional: Select specific columns
+    .select(&["id", "username"])  // Optional: Select specific columns
     .where_eq("active", true)     // WHERE active = ?
     .r#where("age", ">", 18)      // WHERE age > ?
     .order_by("created_at", "DESC")
     .limit(10)
-    .get(&pool)
+    .get(pool)
     .await?;
 ```
 
@@ -68,7 +81,7 @@ To get a single record:
 ```rust
 let user = User::query()
     .where_eq("email", "admin@example.com")
-    .first(&pool)
+    .first(pool)
     .await?;
 ```
 
@@ -81,13 +94,15 @@ To create a record, pass a struct (or reference) that implements `Serialize`. Th
 ```rust
 #[derive(Serialize)]
 struct NewUser {
-    name: String,
+    username: String,
     email: String,
+    password_hash: String,
 }
 
-let new_id = User::create(&pool, NewUser {
-    name: "Mario".to_string(),
+let new_id = User::create(&state.db_manager, NewUser {
+    username: "Mario".to_string(),
     email: "mario@example.com".to_string(),
+    password_hash: "hashed_secret".to_string(),
 }).await?;
 ```
 
@@ -100,12 +115,12 @@ You can update a record instance directly. Like creation, pass a struct with *on
 ```rust
 #[derive(Serialize)]
 struct UpdateName {
-    name: String,
+    username: String,
 }
 
-if let Some(user) = User::find(&pool, 1).await? {
-    user.update(&pool, UpdateName {
-        name: "Super Mario".to_string()
+if let Some(user) = User::find(&state.db_manager, 1).await? {
+    user.update(&state.db_manager, UpdateName {
+        username: "Super Mario".to_string()
     }).await?;
 }
 ```
@@ -115,8 +130,8 @@ if let Some(user) = User::find(&pool, 1).await? {
 ## 5. Deleting Records
 
 ```rust
-if let Some(user) = User::find(&pool, 1).await? {
-    user.delete(&pool).await?;
+if let Some(user) = User::find(&state.db_manager, 1).await? {
+    user.delete(&state.db_manager).await?;
 }
 ```
 
@@ -134,10 +149,9 @@ impl Orbit for User {
     fn boot() {
         // Example: Log when the model is booted
         println!("User model booted!");
-
-        // Future: Register global scopes or observers here
     }
 }
+```
 
 ---
 
@@ -156,8 +170,9 @@ impl User {
     }
 }
 
-// Usage
-let posts = user.posts().get(&pool).await?;
+// Usage (requires pool)
+let pool = state.db_manager.default_connection().unwrap();
+let posts = user.posts().get(pool).await?;
 ```
 
 ### Belongs To
@@ -165,16 +180,16 @@ let posts = user.posts().get(&pool).await?;
 If a `Post` belongs to a `User`:
 
 ```rust
-use crate::database::DbPool;
+use crate::database::DatabaseManager;
 
 impl Post {
-    pub async fn user(&self, pool: &DbPool) -> Result<Option<User>, sqlx::Error> {
-        User::belongs_to(pool, self.user_id).await
+    pub async fn user(&self, manager: &DatabaseManager) -> Result<Option<User>, sqlx::Error> {
+        User::belongs_to(manager, self.user_id).await
     }
 }
 
 // Usage
-let user = post.user(&pool).await?;
+let user = post.user(&state.db_manager).await?;
 ```
 
 ---
@@ -188,8 +203,8 @@ use crate::database::DbPool;
 
 impl User {
     // Like an Eloquent Accessor: $user->full_name
-    pub fn full_name(&self) -> String {
-        format!("{} ({})", self.name, self.email)
+    pub fn display_name(&self) -> String {
+        format!("{} <{}>", self.username, self.email)
     }
 
     // Custom Query Scope
