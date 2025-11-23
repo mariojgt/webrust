@@ -114,26 +114,36 @@ pub enum RuneCommand {
         /// Name of the package (e.g. blog, admin-panel)
         name: String,
     },
+
+    /// Create a new custom command
+    #[command(name = "make:command")]
+    MakeCommand {
+        /// Name of the command (e.g. SendEmails)
+        name: String,
+    },
+
+    /// Run a custom command
+    #[command(external_subcommand)]
+    External(Vec<String>),
 }
 
 pub async fn run_setup() -> Result<(), Box<dyn std::error::Error>> {
     println!("🔧 Running WebRust setup...");
 
     // Check DB connection (optional)
-    match framework::build_pool().await {
-        Ok(pool) => {
-            match sqlx::query("SELECT 1").execute(&pool).await {
-                Ok(_) => println!("✅ Database connection OK"),
-                Err(e) => {
-                    println!("⚠️  Database connection failed: {}", e);
-                    println!("   You can still run the server, but database features won't work.");
-                }
+    let db_manager = framework::build_database_manager().await;
+    
+    if let Some(pool) = db_manager.default_connection() {
+        match sqlx::query("SELECT 1").execute(pool).await {
+            Ok(_) => println!("✅ Database connection OK"),
+            Err(e) => {
+                println!("⚠️  Database connection failed: {}", e);
+                println!("   You can still run the server, but database features won't work.");
             }
         }
-        Err(e) => {
-            println!("⚠️  Could not build database pool: {}", e);
-            println!("   You can still run the server, but database features won't work.");
-        }
+    } else {
+        println!("⚠️  Could not connect to default database.");
+        println!("   You can still run the server, but database features won't work.");
     }
 
     // Prepare storage directory
@@ -721,6 +731,80 @@ impl WebRustPackage for Package {{
     println!("1. Add it to [dependencies] in Cargo.toml:");
     println!("   {} = {{ path = \"packages/{}\" }}", package_name, package_name);
     println!("2. Register it in src/main.rs (or wherever you load packages).");
+
+    Ok(())
+}
+
+pub fn make_command(name: &str) -> io::Result<()> {
+    let module_name = to_snake_case(name);
+    let struct_name = to_pascal_case(name);
+
+    let commands_dir = Path::new("src").join("commands");
+    fs::create_dir_all(&commands_dir)?;
+
+    let file_path = commands_dir.join(format!("{module_name}.rs"));
+
+    if file_path.exists() {
+        println!("Command file already exists: {:?}", file_path);
+    } else {
+        let contents = format!(
+            r#"
+use async_trait::async_trait;
+use crate::services::console::Command;
+
+pub struct {struct_name};
+
+#[async_trait]
+impl Command for {struct_name} {{
+    fn name(&self) -> &str {{
+        "{module_name}" // e.g. email:send
+    }}
+
+    fn description(&self) -> &str {{
+        "Command description"
+    }}
+
+    async fn handle(&self, args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {{
+        println!("Running command: {{}}", self.name());
+        println!("Args: {{:?}}", args);
+        
+        // Your logic here
+        
+        Ok(())
+    }}
+}}
+"#
+        );
+
+        fs::write(&file_path, contents.trim_start())?;
+        println!("Created command: {:?}", file_path);
+    }
+
+    // Update mod.rs
+    let mod_path = commands_dir.join("mod.rs");
+    let mod_line = format!("pub mod {module_name};\n");
+    append_to_mod_file(&mod_path, &mod_line)?;
+    
+    // Auto-register in kernel()
+    let register_line = format!(
+        "    commands.insert(\"{}\".to_string(), Box::new({}::{}));", 
+        module_name.replace("_", ":"), 
+        module_name, 
+        struct_name
+    );
+
+    let mut mod_content = fs::read_to_string(&mod_path)?;
+    if !mod_content.contains(&register_line) {
+        // Look for the end of the kernel function to insert before the return
+        if let Some(pos) = mod_content.rfind("commands\n}") {
+             mod_content.insert_str(pos, &format!("{}\n\n    ", register_line.trim()));
+             fs::write(&mod_path, mod_content)?;
+             println!("✅ Automatically registered command in src/commands/mod.rs");
+        } else {
+             println!("\n⚠️  Could not auto-register. Please add this line to kernel():");
+             println!("{}", register_line);
+        }
+    }
 
     Ok(())
 }

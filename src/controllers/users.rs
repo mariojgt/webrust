@@ -6,14 +6,10 @@ use crate::models::user::User;
 use crate::orbit::Orbit;
 
 pub async fn index(State(state): State<AppState>) -> Html<String> {
-    let users = if let Some(db) = &state.db {
-        // Use the new Orbit ORM method
-        User::all(db)
-            .await
-            .unwrap_or_else(|_| Vec::new())
-    } else {
-        Vec::new()
-    };
+    // Use the new Orbit ORM method which handles connection selection
+    let users = User::all(&state.db_manager)
+        .await
+        .unwrap_or_else(|_| Vec::new());
 
     let mut ctx = Context::new();
     ctx.insert("title", "Users");

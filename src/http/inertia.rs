@@ -86,7 +86,15 @@ impl Inertia {
             let page_json = serde_json::to_string(&page).unwrap();
 
             let mut ctx = tera::Context::new();
-            ctx.insert("page", &page_json);
+            
+            // Construct the Inertia app div
+            // We use single quotes for the attribute to avoid conflict with JSON double quotes
+            // and escape any single quotes in the JSON itself.
+            let escaped_json = page_json.replace("'", "&#39;");
+            let inertia_body = format!(r#"<div id="app" data-page='{}'></div>"#, escaped_json);
+            
+            ctx.insert("inertia_body", &inertia_body);
+            ctx.insert("inertia_head", ""); // Placeholder for future head injection
 
             let body = self.state.templates.render("root.rune.html", &ctx)
                 .unwrap_or_else(|e| format!(

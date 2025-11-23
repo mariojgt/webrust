@@ -1,4 +1,6 @@
 use sqlx::Pool;
+use std::collections::HashMap;
+use std::sync::Arc;
 
 #[cfg(feature = "mysql")]
 pub type Db = sqlx::MySql;
@@ -23,3 +25,32 @@ pub type DbPoolOptions = sqlx::sqlite::SqlitePoolOptions;
 
 pub type DbPool = Pool<Db>;
 pub type DbRow = <Db as sqlx::Database>::Row;
+
+#[derive(Clone)]
+pub struct DatabaseManager {
+    default_name: String,
+    pools: HashMap<String, DbPool>,
+}
+
+impl DatabaseManager {
+    pub fn new(default_name: String) -> Self {
+        Self {
+            default_name,
+            pools: HashMap::new(),
+        }
+    }
+
+    pub fn add(&mut self, name: &str, pool: DbPool) {
+        self.pools.insert(name.to_string(), pool);
+    }
+
+    pub fn connection(&self, name: Option<&str>) -> Option<&DbPool> {
+        let name = name.unwrap_or(&self.default_name);
+        self.pools.get(name)
+    }
+    
+    /// Get the default connection
+    pub fn default_connection(&self) -> Option<&DbPool> {
+        self.connection(None)
+    }
+}

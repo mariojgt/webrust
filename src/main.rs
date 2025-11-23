@@ -14,10 +14,11 @@ mod config;
 mod support;
 pub mod cache;
 pub mod database;
+pub mod commands;
 
 use clap::Parser;
 use crate::cli::{Cli, Command, RuneCommand};
-use crate::framework::{AppState, build_tera, build_pool};
+use crate::framework::{AppState, build_tera, build_database_manager};
 use crate::routes::router;
 use crate::cache::{Cache, RedisCache, FileCache, MemoryCache};
 use std::process::{Command as ProcessCommand, Child};
@@ -74,17 +75,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     // logging
                     let _guard = crate::services::log::setup();
 
-                    // Try to connect to database, but don't fail if it's not available
-                    let pool = match build_pool().await {
-                        Ok(p) => {
-                            tracing::info!("✅ Database connected");
-                            Some(p)
-                        }
-                        Err(e) => {
-                            tracing::warn!("⚠️  Database connection failed: {}. Running without database.", e);
-                            None
-                        }
-                    };
+                    // Initialize Database Manager (handles multiple connections)
+                    let db_manager = build_database_manager().await;
 
                     // Initialize Cache
                     let cache_driver = std::env::var("CACHE_DRIVER").unwrap_or_else(|_| "file".to_string());
@@ -113,7 +105,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     };
 
                     let tera = build_tera()?;
-                    let state = AppState::new(pool, tera, cache);
+                    let state = AppState::new(db_manager, tera, cache);
 
                     let app = router(state).await;
 
@@ -180,6 +172,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 RuneCommand::MakePackage { name } => {
                     cli::make_package(&name)?;
+                }
+                RuneCommand::MakeCommand { name } => {
+                    cli::make_command(&name)?;
+                }
+                RuneCommand::External(args) => {
+                    let command_name = args.first().expect("No command specified");
+                    let registry = crate::commands::kernel();
+                    
+                    if let Some(cmd) = registry.get(command_name) {
+                        if let Err(e) = cmd.handle(args).await {
+                            eprintln!("Command failed: {}", e);
+                        }
+                    } else {
+                        eprintln!("Command '{}' not found.", command_name);
+                        eprintln!("Available commands:");
+                        for name in registry.keys() {
+                            eprintln!("  - {}", name);
+                        }
+                    }
                 }
             }
         }

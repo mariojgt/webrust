@@ -38,6 +38,10 @@ RUN rm -rf src
 COPY src ./src
 COPY templates ./templates
 
+# Update the modification time of the source files to ensure Cargo rebuilds the binary
+# (Fixes issue where dummy build artifact is newer than copied source)
+RUN touch src/main.rs
+
 # Build the application
 RUN cargo build --release
 

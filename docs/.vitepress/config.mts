@@ -61,6 +61,7 @@ export default defineConfig({
         items: [
           { text: 'Authentication', link: '/AUTH' },
           { text: 'Orbit ORM', link: '/ORBIT' },
+          { text: 'Database Connections', link: '/DATABASE' },
           { text: 'Inertia.js', link: '/INERTIA' },
           { text: 'Caching', link: '/CACHE' },
           { text: 'Validation', link: '/VALIDATION' },
@@ -68,6 +69,7 @@ export default defineConfig({
           { text: 'Logging', link: '/LOGGING' },
           { text: 'Storage', link: '/STORAGE' },
           { text: 'Packages', link: '/PACKAGES' },
+          { text: 'Custom Commands', link: '/COMMANDS' },
         ]
       },
       {

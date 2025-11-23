@@ -405,6 +405,30 @@ let value = state.cache.remember("key", 60, || async {
 
 See [docs/CACHE.md](docs/CACHE.md) for details.
 
+## 20. Custom Commands
+
+You can create your own custom CLI commands (like Artisan commands) to run tasks, migrations, or maintenance scripts.
+
+```bash
+cargo run -- rune make:command SendEmails
+```
+
+See [docs/COMMANDS.md](docs/COMMANDS.md) for full documentation.
+
+## 21. Multiple Database Connections
+
+WebRust supports multiple database connections (e.g., MySQL, SQLite) and allows you to define which connection a model should use.
+
+```rust
+impl Orbit for User {
+    fn connection() -> Option<&'static str> {
+        Some("sqlite")
+    }
+}
+```
+
+See [docs/DATABASE.md](docs/DATABASE.md) for full documentation.
+
 ---
 
 From here you can:

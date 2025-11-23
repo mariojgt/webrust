@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use crate::database::{Db, DbArguments, DbRow, DbPool};
+use crate::database::{Db, DbArguments, DbRow, DbPool, DatabaseManager};
 use sqlx::{FromRow, Arguments, Execute};
 
 pub mod builder;
@@ -14,6 +14,11 @@ pub trait Orbit: Sized + Send + Unpin + for<'r> FromRow<'r, DbRow> {
         "id"
     }
 
+    // Optional: Override this to specify a connection name
+    fn connection() -> Option<&'static str> {
+        None
+    }
+
     // Required to support update/delete on instance
     fn id(&self) -> i64;
 
@@ -24,17 +29,20 @@ pub trait Orbit: Sized + Send + Unpin + for<'r> FromRow<'r, DbRow> {
         builder::Builder::new(Self::table_name())
     }
 
-    async fn all(pool: &DbPool) -> Result<Vec<Self>, sqlx::Error> {
+    async fn all(manager: &DatabaseManager) -> Result<Vec<Self>, sqlx::Error> {
+        let pool = manager.connection(Self::connection()).ok_or(sqlx::Error::Configuration("No database connection found".into()))?;
         Self::query().get(pool).await
     }
 
-    async fn find(pool: &DbPool, id: i64) -> Result<Option<Self>, sqlx::Error> {
+    async fn find(manager: &DatabaseManager, id: i64) -> Result<Option<Self>, sqlx::Error> {
+        let pool = manager.connection(Self::connection()).ok_or(sqlx::Error::Configuration("No database connection found".into()))?;
         Self::query().where_eq(Self::primary_key(), id).first(pool).await
     }
 
-    async fn create<D>(pool: &DbPool, data: D) -> Result<u64, sqlx::Error>
+    async fn create<D>(manager: &DatabaseManager, data: D) -> Result<u64, sqlx::Error>
     where D: serde::Serialize + Send + Sync
     {
+        let pool = manager.connection(Self::connection()).ok_or(sqlx::Error::Configuration("No database connection found".into()))?;
         let value = serde_json::to_value(data).unwrap();
         let object = value.as_object().expect("Data must be an object");
 
@@ -69,9 +77,10 @@ pub trait Orbit: Sized + Send + Unpin + for<'r> FromRow<'r, DbRow> {
         Ok(res.last_insert_id())
     }
 
-    async fn update<D>(&self, pool: &DbPool, data: D) -> Result<u64, sqlx::Error>
+    async fn update<D>(&self, manager: &DatabaseManager, data: D) -> Result<u64, sqlx::Error>
     where D: serde::Serialize + Send + Sync
     {
+        let pool = manager.connection(Self::connection()).ok_or(sqlx::Error::Configuration("No database connection found".into()))?;
         let value = serde_json::to_value(data).unwrap();
         let object = value.as_object().expect("Data must be an object");
 
@@ -106,7 +115,8 @@ pub trait Orbit: Sized + Send + Unpin + for<'r> FromRow<'r, DbRow> {
         Ok(res.rows_affected())
     }
 
-    async fn delete(&self, pool: &DbPool) -> Result<u64, sqlx::Error> {
+    async fn delete(&self, manager: &DatabaseManager) -> Result<u64, sqlx::Error> {
+        let pool = manager.connection(Self::connection()).ok_or(sqlx::Error::Configuration("No database connection found".into()))?;
         let sql = format!("DELETE FROM {} WHERE {} = ?", Self::table_name(), Self::primary_key());
         let res = sqlx::query(&sql)
             .bind(self.id())
@@ -129,9 +139,9 @@ pub trait Orbit: Sized + Send + Unpin + for<'r> FromRow<'r, DbRow> {
     /// Belongs To Relationship
     /// Example: Post belongs to User
     /// post.belongs_to::<User>(&pool, post.user_id).await
-    async fn belongs_to<R>(pool: &DbPool, foreign_key_value: i64) -> Result<Option<R>, sqlx::Error>
+    async fn belongs_to<R>(manager: &DatabaseManager, foreign_key_value: i64) -> Result<Option<R>, sqlx::Error>
     where R: Orbit + Send + Unpin + for<'r> FromRow<'r, DbRow>
     {
-        R::find(pool, foreign_key_value).await
+        R::find(manager, foreign_key_value).await
     }
 }
