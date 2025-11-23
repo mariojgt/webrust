@@ -1,4 +1,5 @@
-use crate::database::{Db, DbArguments, DbRow, DbPool};
+use crate::database::{Db, DbArguments, DbRow, DbPool, DatabaseManager};
+use crate::orbit::Orbit;
 use sqlx::{FromRow, Execute, Encode, Type, Arguments};
 use std::marker::PhantomData;
 
@@ -6,26 +7,28 @@ use std::marker::PhantomData;
 pub struct Builder<T> {
     table: String,
     select: Vec<String>,
+    joins: Vec<String>,
     wheres: Vec<String>,
     order: Vec<String>,
     limit: Option<i64>,
     offset: Option<i64>,
-    arguments: DbArguments,
+    argument_appliers: Vec<Box<dyn Fn(&mut DbArguments) + Send + Sync>>,
     _marker: PhantomData<T>,
 }
 
 impl<T> Builder<T>
-where T: Send + Unpin + for<'r> FromRow<'r, DbRow>
+where T: Orbit + Send + Unpin + for<'r> FromRow<'r, DbRow>
 {
     pub fn new(table: &str) -> Self {
         Self {
             table: table.to_string(),
             select: vec!["*".to_string()],
+            joins: Vec::new(),
             wheres: Vec::new(),
             order: Vec::new(),
             limit: None,
             offset: None,
-            arguments: DbArguments::default(),
+            argument_appliers: Vec::new(),
             _marker: PhantomData,
         }
     }
@@ -43,15 +46,17 @@ where T: Send + Unpin + for<'r> FromRow<'r, DbRow>
     }
 
     pub fn r#where<V>(mut self, col: &str, op: &str, val: V) -> Self
-    where V: 'static + Encode<'static, Db> + Type<Db> + Send
+    where V: 'static + Encode<'static, Db> + Type<Db> + Send + Sync + Clone
     {
         self.wheres.push(format!("{} {} ?", col, op));
-        self.arguments.add(val);
+        self.argument_appliers.push(Box::new(move |args| {
+            args.add(val.clone());
+        }));
         self
     }
 
     pub fn where_eq<V>(mut self, col: &str, val: V) -> Self
-    where V: 'static + Encode<'static, Db> + Type<Db> + Send
+    where V: 'static + Encode<'static, Db> + Type<Db> + Send + Sync + Clone
     {
         self.r#where(col, "=", val)
     }
@@ -71,8 +76,50 @@ where T: Send + Unpin + for<'r> FromRow<'r, DbRow>
         self
     }
 
+    /// Add a JOIN clause
+    /// join("posts", "users.id", "=", "posts.user_id")
+    pub fn join(mut self, table: &str, first: &str, op: &str, second: &str) -> Self {
+        self.joins.push(format!("INNER JOIN {} ON {} {} {}", table, first, op, second));
+        self
+    }
+
+    /// Add a LEFT JOIN clause
+    pub fn left_join(mut self, table: &str, first: &str, op: &str, second: &str) -> Self {
+        self.joins.push(format!("LEFT JOIN {} ON {} {} {}", table, first, op, second));
+        self
+    }
+
+    /// Add a WHERE EXISTS clause
+    /// Useful for "where_has" type queries
+    pub fn where_exists<R>(mut self, subquery: Builder<R>) -> Self 
+    where R: Orbit + Send + Unpin + for<'r> FromRow<'r, DbRow>
+    {
+        let sql = subquery.to_sql();
+        self.wheres.push(format!("EXISTS ({})", sql));
+        self.argument_appliers.extend(subquery.argument_appliers);
+        self
+    }
+
+    /// Dump the generated SQL to the console (debugging)
+    pub fn dump(self) -> Self {
+        let sql = self.to_sql();
+        crate::dump!(sql);
+        self
+    }
+
+    /// Dump the generated SQL and panic (debugging)
+    pub fn dd(self) {
+        let sql = self.to_sql();
+        crate::dd!(sql);
+    }
+
     pub fn to_sql(&self) -> String {
         let mut sql = format!("SELECT {} FROM {}", self.select.join(", "), self.table);
+
+        if !self.joins.is_empty() {
+            sql.push_str(" ");
+            sql.push_str(&self.joins.join(" "));
+        }
 
         if !self.wheres.is_empty() {
             sql.push_str(" WHERE ");
@@ -95,17 +142,29 @@ where T: Send + Unpin + for<'r> FromRow<'r, DbRow>
         sql
     }
 
-    pub async fn get(self, pool: &DbPool) -> Result<Vec<T>, sqlx::Error> {
+    fn build_arguments(&self) -> DbArguments {
+        let mut args = DbArguments::default();
+        for applier in &self.argument_appliers {
+            applier(&mut args);
+        }
+        args
+    }
+
+    pub async fn get(self, manager: &DatabaseManager) -> Result<Vec<T>, sqlx::Error> {
+        let pool = manager.connection(T::connection()).ok_or(sqlx::Error::Configuration("No database connection found".into()))?;
         let sql = self.to_sql();
-        sqlx::query_as_with(&sql, self.arguments)
+        let args = self.build_arguments();
+        sqlx::query_as_with(&sql, args)
             .fetch_all(pool)
             .await
     }
 
-    pub async fn first(mut self, pool: &DbPool) -> Result<Option<T>, sqlx::Error> {
+    pub async fn first(mut self, manager: &DatabaseManager) -> Result<Option<T>, sqlx::Error> {
+        let pool = manager.connection(T::connection()).ok_or(sqlx::Error::Configuration("No database connection found".into()))?;
         self.limit = Some(1);
         let sql = self.to_sql();
-        sqlx::query_as_with(&sql, self.arguments)
+        let args = self.build_arguments();
+        sqlx::query_as_with(&sql, args)
             .fetch_optional(pool)
             .await
     }

@@ -40,7 +40,7 @@ pub async fn router(state: AppState) -> Router {
     let key = Key::from(state.config.app.key.as_bytes());
     let lifetime = state.config.session.lifetime;
 
-    let app = Router::new()
+    let mut app = Router::new()
         .merge(web_routes)
         .merge(api_routes)
         .nest_service("/public", static_files)
@@ -49,6 +49,11 @@ pub async fn router(state: AppState) -> Router {
         .layer(CatchPanicLayer::custom(handle_panic))
         .layer(axum::middleware::from_fn(log_request))
         .layer(CompressionLayer::new()); // Global compression
+
+    #[cfg(debug_assertions)]
+    {
+        app = app.layer(tower_livereload::LiveReloadLayer::new());
+    }
 
     match state.config.session.driver.as_str() {
         "database" => {

@@ -30,13 +30,11 @@ pub trait Orbit: Sized + Send + Unpin + for<'r> FromRow<'r, DbRow> {
     }
 
     async fn all(manager: &DatabaseManager) -> Result<Vec<Self>, sqlx::Error> {
-        let pool = manager.connection(Self::connection()).ok_or(sqlx::Error::Configuration("No database connection found".into()))?;
-        Self::query().get(pool).await
+        Self::query().get(manager).await
     }
 
     async fn find(manager: &DatabaseManager, id: i64) -> Result<Option<Self>, sqlx::Error> {
-        let pool = manager.connection(Self::connection()).ok_or(sqlx::Error::Configuration("No database connection found".into()))?;
-        Self::query().where_eq(Self::primary_key(), id).first(pool).await
+        Self::query().where_eq(Self::primary_key(), id).first(manager).await
     }
 
     async fn create<D>(manager: &DatabaseManager, data: D) -> Result<u64, sqlx::Error>
@@ -143,5 +141,53 @@ pub trait Orbit: Sized + Send + Unpin + for<'r> FromRow<'r, DbRow> {
     where R: Orbit + Send + Unpin + for<'r> FromRow<'r, DbRow>
     {
         R::find(manager, foreign_key_value).await
+    }
+
+    /// Has One Relationship
+    /// Example: User has one Profile
+    fn has_one<R>(&self, foreign_key: &str) -> builder::Builder<R>
+    where R: Orbit + Send + Unpin + for<'r> FromRow<'r, DbRow>
+    {
+        R::query().where_eq(foreign_key, self.id())
+    }
+
+    /// Belongs To Many Relationship (Many-to-Many)
+    /// Example: User belongs to many Roles
+    /// user.belongs_to_many::<Role>("role_user", "user_id", "role_id")
+    fn belongs_to_many<R>(&self, pivot_table: &str, foreign_key: &str, related_key: &str) -> builder::Builder<R>
+    where R: Orbit + Send + Unpin + for<'r> FromRow<'r, DbRow>
+    {
+        let related_table = R::table_name();
+        let related_pk = R::primary_key(); // usually "id"
+
+        // SELECT roles.* FROM roles
+        // INNER JOIN role_user ON roles.id = role_user.role_id
+        // WHERE role_user.user_id = ?
+        R::query()
+            .select(&[&format!("{}.*", related_table)])
+            .join(pivot_table, &format!("{}.{}", related_table, related_pk), "=", &format!("{}.{}", pivot_table, related_key))
+            .where_eq(&format!("{}.{}", pivot_table, foreign_key), self.id())
+    }
+
+    /// Morph One Relationship
+    /// Example: Post has one Image
+    /// post.morph_one::<Image>("imageable_id", "imageable_type")
+    fn morph_one<R>(&self, id_column: &str, type_column: &str) -> builder::Builder<R>
+    where R: Orbit + Send + Unpin + for<'r> FromRow<'r, DbRow>
+    {
+        R::query()
+            .where_eq(id_column, self.id())
+            .where_eq(type_column, Self::table_name())
+    }
+
+    /// Morph Many Relationship
+    /// Example: Post has many Comments
+    /// post.morph_many::<Comment>("commentable_id", "commentable_type")
+    fn morph_many<R>(&self, id_column: &str, type_column: &str) -> builder::Builder<R>
+    where R: Orbit + Send + Unpin + for<'r> FromRow<'r, DbRow>
+    {
+        R::query()
+            .where_eq(id_column, self.id())
+            .where_eq(type_column, Self::table_name())
     }
 }

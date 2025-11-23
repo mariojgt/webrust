@@ -23,7 +23,7 @@ impl Default for DatabaseConfig {
         // We can add more presets here, but for now let's just map the env vars to the "default" connection
         // or strictly follow Laravel's style where we have named connections.
 
-        // "mysql" connection
+        #[cfg(feature = "mysql")]
         connections.insert("mysql".to_string(), DatabaseConnectionConfig {
             url: env::var("DATABASE_URL").unwrap_or_default(),
             max_connections: env::var("DB_MAX_CONNECTIONS")
@@ -32,10 +32,19 @@ impl Default for DatabaseConfig {
                 .unwrap_or(5),
         });
 
-        // "sqlite" connection example
+        #[cfg(feature = "sqlite")]
         connections.insert("sqlite".to_string(), DatabaseConnectionConfig {
             url: env::var("DB_SQLITE_URL").unwrap_or_else(|_| "sqlite::memory:".to_string()),
             max_connections: 1,
+        });
+
+        #[cfg(feature = "postgres")]
+        connections.insert("postgres".to_string(), DatabaseConnectionConfig {
+            url: env::var("DATABASE_URL").unwrap_or_default(),
+            max_connections: env::var("DB_MAX_CONNECTIONS")
+                .unwrap_or_else(|_| "5".to_string())
+                .parse()
+                .unwrap_or(5),
         });
 
         Self {

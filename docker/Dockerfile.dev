@@ -15,11 +15,12 @@ RUN apt-get update --allow-insecure-repositories && \
 # Install cargo-watch for hot reloading
 RUN cargo install cargo-watch
 
-# Configure cargo to use mold
-ENV RUSTFLAGS="-C link-arg=-fuse-ld=mold"
+# Configure cargo to use mold and dynamic linking for faster builds
+ENV RUSTFLAGS="-C link-arg=-fuse-ld=mold -C prefer-dynamic"
 
 # Expose the port
 EXPOSE 8000
 
 # Default command (can be overridden in docker-compose)
-CMD ["cargo", "watch", "-x", "run -- rune serve --host 0.0.0.0"]
+# Watch src and templates, low delay
+CMD ["cargo", "watch", "-w", "src", "-w", "templates", "-d", "0.1", "-x", "run -- rune serve --host 0.0.0.0"]

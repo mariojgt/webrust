@@ -60,19 +60,16 @@ let user = User::find(&state.db_manager, 1).await?;
 
 ### Query Builder
 
-Orbit provides a fluent query builder for more complex queries. Note that the builder's final execution methods (`get`, `first`) require a `&DbPool`, not the manager.
+Orbit provides a fluent query builder for more complex queries. You can pass the `DatabaseManager` directly to the execution methods (`get`, `first`), and Orbit will automatically use the correct connection defined in your model.
 
 ```rust
-// Get the pool (either default or specific)
-let pool = state.db_manager.default_connection().unwrap();
-
 let users = User::query()
     .select(&["id", "username"])  // Optional: Select specific columns
     .where_eq("active", true)     // WHERE active = ?
     .r#where("age", ">", 18)      // WHERE age > ?
     .order_by("created_at", "DESC")
     .limit(10)
-    .get(pool)
+    .get(&state.db_manager)
     .await?;
 ```
 
@@ -81,8 +78,29 @@ To get a single record:
 ```rust
 let user = User::query()
     .where_eq("email", "admin@example.com")
-    .first(pool)
+    .first(&state.db_manager)
     .await?;
+```
+
+### Debugging SQL
+
+You can inspect the generated SQL using `to_sql()`, `dump()`, or `dd()`.
+
+```rust
+// Print SQL to console and continue
+User::query()
+    .where_eq("active", true)
+    .dump()
+    .get(&state.db_manager)
+    .await?;
+
+// Print SQL to console and STOP execution (Panic with debug page)
+User::query()
+    .where_eq("active", true)
+    .dd();
+
+// Get SQL string manually
+let sql = User::query().where_eq("id", 1).to_sql();
 ```
 
 ---
@@ -170,9 +188,23 @@ impl User {
     }
 }
 
-// Usage (requires pool)
-let pool = state.db_manager.default_connection().unwrap();
-let posts = user.posts().get(pool).await?;
+// Usage
+let posts = user.posts().get(&state.db_manager).await?;
+```
+
+### Has One
+
+If a `User` has one `Profile`:
+
+```rust
+impl User {
+    pub fn profile(&self) -> builder::Builder<Profile> {
+        self.has_one("user_id")
+    }
+}
+
+// Usage
+let profile = user.profile().first(&state.db_manager).await?;
 ```
 
 ### Belongs To
@@ -192,9 +224,72 @@ impl Post {
 let user = post.user(&state.db_manager).await?;
 ```
 
+### Belongs To Many (Many-to-Many)
+
+If a `User` belongs to many `Role`s (via `role_user` pivot table):
+
+```rust
+impl User {
+    pub fn roles(&self) -> builder::Builder<Role> {
+        // pivot_table, foreign_key (on pivot), related_key (on pivot)
+        self.belongs_to_many("role_user", "user_id", "role_id")
+    }
+}
+
+// Usage
+let roles = user.roles().get(&state.db_manager).await?;
+```
+
+### Polymorphic Relationships
+
+#### Morph One / Morph Many
+
+If a `Post` has many `Comment`s (polymorphic):
+
+```rust
+impl Post {
+    pub fn comments(&self) -> builder::Builder<Comment> {
+        // id_column, type_column
+        self.morph_many("commentable_id", "commentable_type")
+    }
+}
+```
+
 ---
 
-## 8. Custom Methods (Scopes / Accessors)
+## 8. Advanced Querying
+
+### Joins
+
+You can perform joins using `join` and `left_join`.
+
+```rust
+User::query()
+    .join("posts", "users.id", "=", "posts.user_id")
+    .select(&["users.*", "posts.title as post_title"])
+    .get(&state.db_manager)
+    .await?;
+```
+
+### Where Has (Relationship Existence)
+
+To filter models based on the existence of a relationship, use `where_exists`.
+
+```rust
+// Find users who have at least one active post
+let subquery = Post::query()
+    .where_raw("posts.user_id = users.id")
+    .where_eq("active", true);
+
+let users = User::query()
+    .where_exists(subquery)
+    .get(&state.db_manager)
+    .await?;
+```
+
+---
+
+## 9. Custom Methods (Scopes / Accessors)
 
 Since Rust structs are static, we don't have "dynamic attributes", but we can just add methods to the struct.
 
@@ -208,10 +303,10 @@ impl User {
     }
 
     // Custom Query Scope
-    pub async fn active(pool: &DbPool) -> Result<Vec<Self>, sqlx::Error> {
+    pub async fn active(manager: &DatabaseManager) -> Result<Vec<Self>, sqlx::Error> {
         Self::query()
             .where_eq("is_active", true)
-            .get(pool)
+            .get(manager)
             .await
     }
 }

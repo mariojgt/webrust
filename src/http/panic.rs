@@ -90,7 +90,7 @@ pub fn handle_panic(err: Box<dyn Any + Send + 'static>) -> Response {
                         <div class="card-body">
                             <h2>Panic Message</h2>
                             <pre><code>{}</code></pre>
-                            
+
                             <div style="margin-top: 2rem; color: #a0aec0; font-size: 0.9rem;">
                                 Check the server logs for the full stack trace.
                             </div>
