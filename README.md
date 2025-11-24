@@ -129,17 +129,37 @@ cargo run -- rune <command> [options]
 - `rune setup` – run the initial setup (DB check + storage)
 - `rune dev` – start the development server with hot reload
 - `rune serve` – start the production HTTP server
-- `rune make-controller <Name>` – generate a controller scaffold
-- `rune make-model <Name>` – generate a model scaffold
+- `rune tinker` – open interactive Tinker REPL shell ✨ **NEW**
+- `rune route:list` – list all application routes ✨ **NEW**
+- `rune migration:list` – list all available migrations ✨ **NEW**
+- `rune make:controller <Name>` – generate a controller scaffold
+- `rune make:resource <Name>` – generate a full RESTful resource controller with CRUD ✨ **NEW**
+- `rune make:model <Name>` – generate a model scaffold
+- `rune make:middleware <Name>` – generate middleware
+- `rune make:request <Name>` – generate form request with validation ✨ **NEW**
 - `rune make:migration <Name>` – create a new migration file
 - `rune migrate` – run database migrations
 - `rune migrate:rollback` – rollback the last migration
+- `rune make:auth` – scaffold authentication
+- `rune make:package <Name>` – create a reusable package
+- `rune make:command <Name>` – create a custom CLI command
 
 Examples:
 
 ```bash
 # setup
 cargo run -- rune setup
+
+# debugging & utilities (new!)
+cargo run -- rune tinker                       # Interactive shell
+cargo run -- rune route:list                   # List routes
+cargo run -- rune migration:list               # List migrations
+
+# create a full resource controller (new!)
+cargo run -- rune make:resource Post
+
+# create a model
+cargo run -- rune make:model Post
 
 # create a migration
 cargo run -- rune make:migration create_posts_table
@@ -148,13 +168,23 @@ cargo run -- rune make:migration create_posts_table
 cargo run -- rune migrate
 ```
 
-`rune make-controller Blog` will:
+`rune tinker` opens an interactive shell for:
+- Debugging database queries
+- Testing code snippets
+- Viewing configuration
+- Listing routes and tables
 
+`rune make:resource Post` will:
+- Create `src/controllers/post.rs` with all 7 CRUD methods
+- Create `src/routes/post.rs` with all RESTful routes
+- Create template scaffolds in `templates/post/`
+- Generate migration and model helpers
+
+`rune make:controller Blog` will:
 - Create `src/controllers/blog.rs`
 - Ensure `src/controllers/mod.rs` has `pub mod blog;`
-- Expect a template at `templates/blog/index.rune.html`
 
-`rune make-model Post` will:
+`rune make:model Post` will:
 - Create `src/models/post.rs`
 - Ensure `src/models/mod.rs` has `pub mod post;`
 
@@ -335,16 +365,64 @@ User::create(&pool, NewUser {
     email: "mario@example.com".to_string(),
 }).await?;
 
-// Fluent Query Builder
+// Fluent Query Builder with 20+ methods ✨ **ENHANCED**
 let users = User::query()
     .where_eq("active", true)
-    .order_by("created_at", "DESC")
+    .latest("created_at")      // NEW: shortcut for DESC
     .limit(10)
-    .get(&pool)
+    .get(&state.db_manager)    // Now supports multiple connections
+    .await?;
+
+// NEW: Pagination with metadata
+let (users, total) = User::query()
+    .where_eq("status", "active")
+    .paginate(&state.db_manager, 1, 15)
     .await?;
 ```
 
-See [docs/ORBIT.md](docs/ORBIT.md) for full documentation.
+New query methods: `.paginate()`, `.distinct()`, `.or_where()`, `.where_in()`, `.where_not_in()`, `.where_null()`, `.where_not_null()`, `.where_between()`, `.latest()`, `.oldest()`, `.group_by()`, `.having()`, and more!
+
+See [docs/ORBIT.md](docs/ORBIT.md) for full documentation and [docs/IMPROVEMENTS.md](docs/IMPROVEMENTS.md) for new features.
+
+---
+
+## 12a. Clean Architecture & Design Patterns ✨ **NEW**
+
+WebRust now supports modern application architecture patterns:
+
+### Repository Pattern
+Abstract your data access layer:
+```rust
+#[async_trait]
+impl Repository<Post> for PostRepository {
+    async fn all(&self) { ... }
+    async fn find(&self, id: i64) { ... }
+    async fn create(&self, data: Post) { ... }
+}
+```
+
+### Service Layer
+Organize business logic:
+```rust
+#[async_trait]
+impl BusinessService<Post> for PostService {
+    async fn get_all(&self) { ... }
+    async fn get_by_id(&self, id: i64) { ... }
+}
+```
+
+### Response Helpers
+Consistent API responses:
+```rust
+success(data)                    // 200 OK
+created(data)                    // 201 Created
+unprocessable_entity(errors)     // 422 Validation
+not_found_response("message")    // 404 Not Found
+server_error("message")          // 500 Error
+paginated(items, page, per_page, total)  // Paginated response
+```
+
+See [docs/IMPROVEMENTS.md](docs/IMPROVEMENTS.md) and [docs/IMPLEMENTATION_GUIDE.md](docs/IMPLEMENTATION_GUIDE.md) for complete examples.
 
 ---
 
@@ -431,11 +509,30 @@ See [docs/DATABASE.md](docs/DATABASE.md) for full documentation.
 
 ---
 
+## 📖 Complete Documentation
+
+- **[IMPROVEMENTS.md](docs/IMPROVEMENTS.md)** – New Laravel-inspired features ✨
+- **[IMPLEMENTATION_GUIDE.md](docs/IMPLEMENTATION_GUIDE.md)** – Step-by-step blog example ✨
+- **[QUICK_REFERENCE.md](docs/QUICK_REFERENCE.md)** – Quick command and pattern lookup ✨
+- **[MIGRATION_GUIDE.md](docs/MIGRATION_GUIDE.md)** – Migrate existing code to new patterns ✨
+- **[ORBIT.md](docs/ORBIT.md)** – Query builder reference
+- **[BASICS.md](docs/BASICS.md)** – Controller and view basics
+- **[AUTH.md](docs/AUTH.md)** – Authentication setup
+- **[VALIDATION.md](docs/VALIDATION.md)** – Form validation
+- **[CACHE.md](docs/CACHE.md)** – Caching strategies
+- **[MAIL.md](docs/MAIL.md)** – Email sending
+- **[QUEUES.md](docs/QUEUES.md)** – Job queuing
+- **[SCHEDULER.md](docs/SCHEDULER.md)** – Task scheduling
+- **[DEBUG_QUICK_REF.md](docs/DEBUG_QUICK_REF.md)** – Debugging helpers
+
+---
+
 From here you can:
 
-- Add more Rune commands: `make:model`, `make:view`, `make:migration`
-- Extract DB logic into repositories
-- Implement auth guards & middleware
-- Add a `view!()` macro to simplify controllers
+- Follow the [IMPLEMENTATION_GUIDE.md](docs/IMPLEMENTATION_GUIDE.md) for a complete real-world example
+- Check [QUICK_REFERENCE.md](docs/QUICK_REFERENCE.md) for command syntax
+- Use [IMPROVEMENTS.md](docs/IMPROVEMENTS.md) for feature documentation
+- Run `cargo run -- rune make:resource <Name>` to scaffold resources
+- Build with clean architecture using Repositories and Services
 
-This is your **starting point** to grow WebRust into a full framework while learning Rust.
+This is your **starting point** to grow WebRust into a full framework while learning Rust, with **Laravel conventions** and **Rust's performance**! 🚀

@@ -19,11 +19,25 @@ hero:
 
 features:
   - title: Laravel-like DX
-    details: Familiar concepts like Controllers, Middleware, Migrations, and Artisan-style commands (Rune).
+    details: Familiar concepts like Controllers, Middleware, Migrations, and Artisan-style commands (Rune). ✨ Now with Tinker REPL!
   - title: Rust Performance
     details: Built on Axum and Tokio for blazing fast performance and type safety.
   - title: Orbit ORM
-    details: An expressive, fluent ORM inspired by Eloquent. Active Record pattern in Rust.
+    details: An expressive, fluent ORM inspired by Eloquent. Now with 20+ query builder methods!
   - title: Modern Frontend
     details: First-class support for Inertia.js (Vue/React) and Tailwind CSS.
+  - title: Event-Driven Architecture
+    details: Events, Listeners, and Dispatchers for decoupled, reactive code. Full async support!
+  - title: Model Observers
+    details: Lifecycle hooks for automatic actions on create, update, delete with Observable trait.
+  - title: Authorization Policies
+    details: Elegant permission patterns with Policy trait for view, create, update, delete operations.
+  - title: Clean Architecture
+    details: Repository, Service Patterns, Observers, Policies, and Tinker debugging.
+  - title: Testing Tools
+    details: Factory pattern for test data generation, Route listing, and Migration templates.
+  - title: Response Helpers
+    details: Laravel-like response helpers for consistent API responses and quick actions.
+  - title: Developer Productivity
+    details: Interactive Tinker shell, Route:List commands, and Factory patterns for faster development.
 ---

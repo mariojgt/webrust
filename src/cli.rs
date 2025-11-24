@@ -57,6 +57,16 @@ pub enum RuneCommand {
         name: String,
     },
 
+    /// Generate a resource controller with full CRUD routes
+    #[command(name = "make:resource")]
+    MakeResource {
+        /// Name of the resource (e.g. User, Post, Product)
+        name: String,
+        /// Include API routes as well
+        #[arg(long)]
+        api: bool,
+    },
+
     /// Generate a new model file
     #[command(name = "make:model")]
     MakeModel {
@@ -121,6 +131,17 @@ pub enum RuneCommand {
         /// Name of the command (e.g. SendEmails)
         name: String,
     },
+
+    /// Open interactive Tinker REPL shell
+    Tinker,
+
+    /// List all application routes
+    #[command(name = "route:list")]
+    RouteList,
+
+    /// List available migrations
+    #[command(name = "migration:list")]
+    MigrationList,
 
     /// Run a custom command
     #[command(external_subcommand)]
@@ -920,4 +941,238 @@ fn to_pascal_case(s: &str) -> String {
             }
         })
         .collect::<String>()
+}
+
+/// Generate a full resource controller with CRUD operations
+pub fn make_resource(name: &str, api: bool) -> io::Result<()> {
+    println!("📦 Generating resource controller for '{}'...", name);
+
+    let module_name = to_snake_case(name);
+    let struct_name = to_pascal_case(name);
+    let plural_name = format!("{}s", module_name); // Simple pluralization
+
+    let controllers_dir = Path::new("src").join("controllers");
+    fs::create_dir_all(&controllers_dir)?;
+
+    let file_path = controllers_dir.join(format!("{module_name}.rs"));
+
+    if file_path.exists() {
+        println!("❌ Controller file already exists: {:?}", file_path);
+        return Ok(());
+    }
+
+    let contents = format!(
+        r#"
+use axum::{{
+    extract::{{State, Path}},
+    response::{{Html, IntoResponse, Response}},
+    Form, Json,
+}};
+use tera::Context;
+use serde::{{Deserialize, Serialize}};
+
+use crate::framework::AppState;
+use crate::prelude::*;
+
+/// Resource controller for {struct_name}
+/// Implements standard CRUD operations
+
+/// Index - List all {plural_name}
+pub async fn index(State(state): State<AppState>) -> impl IntoResponse {{
+    let mut ctx = Context::new();
+    ctx.insert("title", "{struct_name} List");
+
+    let body = state
+        .templates
+        .render("{module_name}/index.rune.html", &ctx)
+        .unwrap_or_else(|err| format!("Template error: {{err}}"));
+
+    Html(body)
+}}
+
+/// Create - Show creation form
+pub async fn create(State(state): State<AppState>) -> impl IntoResponse {{
+    let mut ctx = Context::new();
+    ctx.insert("title", "Create {struct_name}");
+
+    let body = state
+        .templates
+        .render("{module_name}/create.rune.html", &ctx)
+        .unwrap_or_else(|err| format!("Template error: {{err}}"));
+
+    Html(body)
+}}
+
+/// Store - Create new {struct_name}
+pub async fn store(State(state): State<AppState>) -> impl IntoResponse {{
+    success_message("Resource created successfully")
+}}
+
+/// Show - Display a single {struct_name}
+pub async fn show(State(state): State<AppState>, Path(id): Path<i64>) -> impl IntoResponse {{
+    let mut ctx = Context::new();
+    ctx.insert("title", "View {struct_name}");
+    ctx.insert("id", &id);
+
+    let body = state
+        .templates
+        .render("{module_name}/show.rune.html", &ctx)
+        .unwrap_or_else(|err| format!("Template error: {{err}}"));
+
+    Html(body)
+}}
+
+/// Edit - Show edit form
+pub async fn edit(State(state): State<AppState>, Path(id): Path<i64>) -> impl IntoResponse {{
+    let mut ctx = Context::new();
+    ctx.insert("title", "Edit {struct_name}");
+    ctx.insert("id", &id);
+
+    let body = state
+        .templates
+        .render("{module_name}/edit.rune.html", &ctx)
+        .unwrap_or_else(|err| format!("Template error: {{err}}"));
+
+    Html(body)
+}}
+
+/// Update - Update a {struct_name}
+pub async fn update(State(state): State<AppState>, Path(id): Path<i64>) -> impl IntoResponse {{
+    success_message("Resource updated successfully")
+}}
+
+/// Destroy - Delete a {struct_name}
+pub async fn destroy(State(state): State<AppState>, Path(id): Path<i64>) -> impl IntoResponse {{
+    success_message("Resource deleted successfully")
+}}
+"#
+    );
+
+    fs::write(&file_path, contents.trim_start())?;
+    println!("✅ Created controller: {:?}", file_path);
+
+    // Update mod.rs
+    let mod_path = controllers_dir.join("mod.rs");
+    let mod_line = format!("pub mod {module_name};\n");
+    append_to_mod_file(&mod_path, &mod_line)?;
+
+    // Create routes
+    let routes_dir = Path::new("src").join("routes");
+    let resource_routes_path = routes_dir.join(format!("{module_name}.rs"));
+
+    let routes_content = format!(
+        r#"
+use axum::{{
+    routing::{{get, post, put, delete}},
+    Router,
+}};
+use crate::framework::AppState;
+use crate::controllers::{module_name};
+
+pub fn routes(state: AppState) -> Router<AppState> {{
+    Router::new()
+        .route("/{plural_name}", get({module_name}::index).post({module_name}::store))
+        .route("/{plural_name}/create", get({module_name}::create))
+        .route("/{plural_name}/:id", get({module_name}::show).put({module_name}::update).delete({module_name}::destroy))
+        .route("/{plural_name}/:id/edit", get({module_name}::edit))
+        .with_state(state)
+}}
+"#
+    );
+
+    fs::write(&resource_routes_path, routes_content.trim_start())?;
+    println!("✅ Created routes: {:?}", resource_routes_path);
+
+    // Create template directory
+    let templates_dir = Path::new("templates").join(&module_name);
+    fs::create_dir_all(&templates_dir)?;
+
+    // Create basic templates
+    let templates = vec![
+        ("index.rune.html", format!(r#"
+{{% extends "layout.rune.html" %}}
+
+{{% block content %}}
+<div class="container">
+    <h1>{} List</h1>
+    <a href="/{}/create">Create New</a>
+
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Populate from database -->
+        </tbody>
+    </table>
+</div>
+{{% endblock %}}
+"#, struct_name, plural_name)),
+        ("create.rune.html", format!(r#"
+{{% extends "layout.rune.html" %}}
+
+{{% block content %}}
+<div class="container">
+    <h1>Create {}</h1>
+
+    <form action="/{}" method="POST">
+        {{% csrf_field %}}
+
+        <!-- Add form fields here -->
+
+        <button type="submit">Create</button>
+    </form>
+</div>
+{{% endblock %}}
+"#, struct_name, plural_name)),
+        ("show.rune.html", format!(r#"
+{{% extends "layout.rune.html" %}}
+
+{{% block content %}}
+<div class="container">
+    <h1>View {}</h1>
+
+    <a href="/{}/{{ id }}/edit">Edit</a>
+
+    <!-- Display resource details -->
+</div>
+{{% endblock %}}
+"#, struct_name, plural_name)),
+        ("edit.rune.html", format!(r#"
+{{% extends "layout.rune.html" %}}
+
+{{% block content %}}
+<div class="container">
+    <h1>Edit {}</h1>
+
+    <form action="/{}/{{ id }}" method="POST">
+        {{% csrf_field %}}
+        <input type="hidden" name="_method" value="PUT">
+
+        <!-- Add form fields here -->
+
+        <button type="submit">Update</button>
+    </form>
+</div>
+{{% endblock %}}
+"#, struct_name, plural_name)),
+    ];
+
+    for (filename, content) in templates {
+        let template_path = templates_dir.join(filename);
+        fs::write(&template_path, content)?;
+        println!("✅ Created template: {:?}", template_path);
+    }
+
+    println!("✨ Resource controller created successfully!");
+    println!("📝 Next steps:");
+    println!("  1. Add the routes to src/routes/mod.rs");
+    println!("  2. Create a model for this resource");
+    println!("  3. Update the templates with your fields");
+    println!("  4. Implement the controller logic");
+
+    Ok(())
 }

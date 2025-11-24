@@ -91,7 +91,7 @@ where T: Orbit + Send + Unpin + for<'r> FromRow<'r, DbRow>
 
     /// Add a WHERE EXISTS clause
     /// Useful for "where_has" type queries
-    pub fn where_exists<R>(mut self, subquery: Builder<R>) -> Self 
+    pub fn where_exists<R>(mut self, subquery: Builder<R>) -> Self
     where R: Orbit + Send + Unpin + for<'r> FromRow<'r, DbRow>
     {
         let sql = subquery.to_sql();
@@ -167,5 +167,142 @@ where T: Orbit + Send + Unpin + for<'r> FromRow<'r, DbRow>
         sqlx::query_as_with(&sql, args)
             .fetch_optional(pool)
             .await
+    }
+
+    /// Paginate results (Laravel-style)
+    /// Usage: query.paginate(manager, page, per_page).await
+    pub async fn paginate(mut self, manager: &DatabaseManager, page: i64, per_page: i64) -> Result<(Vec<T>, i64), sqlx::Error> {
+        let pool = manager.connection(T::connection()).ok_or(sqlx::Error::Configuration("No database connection found".into()))?;
+
+        // Get total count
+        let count_sql = format!("SELECT COUNT(*) as count FROM {}", self.table);
+        let count_result: (i64,) = sqlx::query_as(&count_sql).fetch_one(pool).await?;
+        let total = count_result.0;
+
+        // Apply pagination
+        self.offset = Some((page - 1) * per_page);
+        self.limit = Some(per_page);
+
+        let sql = self.to_sql();
+        let args = self.build_arguments();
+        let items = sqlx::query_as_with(&sql, args)
+            .fetch_all(pool)
+            .await?;
+
+        Ok((items, total))
+    }
+
+    /// Get distinct results
+    pub fn distinct(mut self) -> Self {
+        if let Some(first) = self.select.first_mut() {
+            if !first.starts_with("DISTINCT") {
+                *first = format!("DISTINCT {}", first);
+            }
+        }
+        self
+    }
+
+    /// Add OR WHERE clause
+    pub fn or_where<V>(mut self, col: &str, op: &str, val: V) -> Self
+    where V: 'static + Encode<'static, Db> + Type<Db> + Send + Sync + Clone
+    {
+        if !self.wheres.is_empty() {
+            // Replace the last AND with OR by modifying how we construct the clause
+            let last_where = self.wheres.pop().unwrap();
+            self.wheres.push(format!("{} OR {} {} ?", last_where, col, op));
+        } else {
+            self.wheres.push(format!("{} {} ?", col, op));
+        }
+        self.argument_appliers.push(Box::new(move |args| {
+            args.add(val.clone());
+        }));
+        self
+    }
+
+    /// Where IN clause
+    pub fn where_in<V>(mut self, col: &str, values: Vec<V>) -> Self
+    where V: 'static + Encode<'static, Db> + Type<Db> + Send + Sync + Clone
+    {
+        let placeholders = vec!["?"; values.len()].join(", ");
+        self.wheres.push(format!("{} IN ({})", col, placeholders));
+
+        for val in values {
+            self.argument_appliers.push(Box::new(move |args| {
+                args.add(val.clone());
+            }));
+        }
+        self
+    }
+
+    /// Where NOT IN clause
+    pub fn where_not_in<V>(mut self, col: &str, values: Vec<V>) -> Self
+    where V: 'static + Encode<'static, Db> + Type<Db> + Send + Sync + Clone
+    {
+        let placeholders = vec!["?"; values.len()].join(", ");
+        self.wheres.push(format!("{} NOT IN ({})", col, placeholders));
+
+        for val in values {
+            self.argument_appliers.push(Box::new(move |args| {
+                args.add(val.clone());
+            }));
+        }
+        self
+    }
+
+    /// Where NULL clause
+    pub fn where_null(mut self, col: &str) -> Self {
+        self.wheres.push(format!("{} IS NULL", col));
+        self
+    }
+
+    /// Where NOT NULL clause
+    pub fn where_not_null(mut self, col: &str) -> Self {
+        self.wheres.push(format!("{} IS NOT NULL", col));
+        self
+    }
+
+    /// Where BETWEEN clause
+    pub fn where_between<V>(mut self, col: &str, min: V, max: V) -> Self
+    where V: 'static + Encode<'static, Db> + Type<Db> + Send + Sync + Clone
+    {
+        self.wheres.push(format!("{} BETWEEN ? AND ?", col));
+        self.argument_appliers.push(Box::new(move |args| {
+            args.add(min.clone());
+        }));
+        self.argument_appliers.push(Box::new(move |args| {
+            args.add(max.clone());
+        }));
+        self
+    }
+
+    /// Add DESC sorting (shortcut)
+    pub fn latest(mut self, column: &str) -> Self {
+        self.order.push(format!("{} DESC", column));
+        self
+    }
+
+    /// Add ASC sorting (shortcut)
+    pub fn oldest(mut self, column: &str) -> Self {
+        self.order.push(format!("{} ASC", column));
+        self
+    }
+
+    /// Group by clause
+    pub fn group_by(mut self, columns: &[&str]) -> Self {
+        for col in columns {
+            self.wheres.push(format!("GROUP BY {}", col));
+        }
+        self
+    }
+
+    /// Add HAVING clause (for GROUP BY)
+    pub fn having<V>(mut self, col: &str, op: &str, val: V) -> Self
+    where V: 'static + Encode<'static, Db> + Type<Db> + Send + Sync + Clone
+    {
+        self.wheres.push(format!("HAVING {} {} ?", col, op));
+        self.argument_appliers.push(Box::new(move |args| {
+            args.add(val.clone());
+        }));
+        self
     }
 }

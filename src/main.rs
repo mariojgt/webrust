@@ -12,6 +12,7 @@ mod prelude;
 mod orbit;
 mod config;
 mod support;
+mod events;
 pub mod cache;
 pub mod database;
 pub mod commands;
@@ -121,6 +122,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 RuneCommand::MakeController { name } => {
                     cli::make_controller(&name)?;
                 }
+                RuneCommand::MakeResource { name, api } => {
+                    cli::make_resource(&name, api)?;
+                }
                 RuneCommand::MakeModel { name } => {
                     cli::make_model(&name)?;
                 }
@@ -175,6 +179,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 RuneCommand::MakeCommand { name } => {
                     cli::make_command(&name)?;
+                }
+                RuneCommand::Tinker => {
+                    let db_manager = build_database_manager().await;
+                    let tera = build_tera()?;
+                    let cache_driver = std::env::var("CACHE_DRIVER").unwrap_or_else(|_| "file".to_string());
+                    let cache: Cache = match cache_driver.as_str() {
+                        "redis" => {
+                            let redis_url = std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1".to_string());
+                            RedisCache::new(&redis_url).await.map(Cache::Redis).unwrap_or_else(|_| Cache::Memory(MemoryCache::new()))
+                        }
+                        "file" => Cache::File(FileCache::new("storage/cache")),
+                        _ => Cache::Memory(MemoryCache::new()),
+                    };
+                    let state = AppState::new(db_manager, tera, cache);
+                    if let Err(e) = crate::commands::tinker::tinker(state).await {
+                        eprintln!("❌ Tinker error: {}", e);
+                    }
+                }
+                RuneCommand::RouteList => {
+                    crate::commands::routes::list_routes();
+                }
+                RuneCommand::MigrationList => {
+                    crate::commands::migrations::list_migrations()?;
                 }
                 RuneCommand::External(args) => {
                     let command_name = args.first().expect("No command specified");
