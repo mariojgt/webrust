@@ -12,3 +12,10 @@ pub mod console;
 pub mod repository;
 pub mod service_layer;
 pub mod factory;
+pub mod error_logger;
+pub mod package_manager;
+pub mod package_scaffold;
+
+pub use error_logger::ErrorLogger;
+pub use package_manager::{PackageManager, Package, PackageManifest, ServiceProvider};
+pub use package_scaffold::scaffold_package;

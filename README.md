@@ -314,24 +314,64 @@ pub struct User {
 
 `GET /users` uses `User::all(&pool)` and renders `templates/users/index.rune.html`.
 
-## 10. Debugging (dd, dump, debug)
+## 10. Enhanced Debugging & Error Logging ✨ **NEW**
 
-WebRust includes Laravel-inspired debugging helpers:
+WebRust now includes **Laravel Ignition-inspired error pages** plus enhanced debugging macros:
 
+### Beautiful Error Pages
 ```rust
 use crate::prelude::*;
 
-// Dump and Die (stops execution)
-dd!(user);
+let error = ErrorContext::new("Database Error", "Connection failed")
+    .with_solution("Check your database configuration")
+    .at("src/database.rs", 42);
 
-// Dump and Continue
-dump!(user);
-
-// Labeled Debug
-debug!("User Info", user);
+error.into_response()  // Returns beautiful HTML error page
 ```
 
-See [docs/DEBUG_QUICK_REF.md](docs/DEBUG_QUICK_REF.md) for more details.
+### Enhanced Debugging Macros
+```rust
+use crate::prelude::*;
+
+// Dump and Die (with formatting)
+dd!(user);
+
+// Dump and Continue (chainable)
+let result = dump!(expensive_operation());
+
+// Labeled Debug
+debug!("user_data", user);
+
+// Conditional Debug
+debug_if!(user.is_admin, "admin_user", user);
+
+// Performance Timing
+timer!("database_query", {
+    User::query().where_eq("active", true).get(&pool).await?
+});
+
+// Benchmarking
+benchmark!("hash_password", 1000, {
+    hash::make("password").ok();
+});
+
+// Colored Logging
+log_success!("Operation complete");      // ✅
+log_error!("Failed to create user");      // ❌
+log_warning!("Cache disabled");           // ⚠️
+log_info!("Starting background job");     // ℹ️
+```
+
+### Error Logging Service
+```rust
+use crate::prelude::*;
+
+let logger = ErrorLogger::new("storage/logs/errors.log");
+logger.log_error("Title", "Message", file!(), line!(), None);
+logger.log_warning("Warning message", None);
+```
+
+See [docs/ERROR_LOGGING.md](docs/ERROR_LOGGING.md) and [docs/ERROR_LOGGING_QUICK_REF.md](docs/ERROR_LOGGING_QUICK_REF.md) for complete guide.
 
 ---
 
@@ -509,6 +549,18 @@ impl Orbit for User {
 
 See [docs/DATABASE.md](docs/DATABASE.md) for full documentation.
 
+## 22. Enhanced Error Logging & Debugging ✨ **NEW**
+
+WebRust includes a complete error logging and debugging system inspired by Laravel's Ignition:
+
+- Beautiful error pages with stack traces
+- Enhanced debugging macros (dd, dump, debug, timer, benchmark)
+- File-based error logging with automatic rotation
+- Performance profiling tools
+- Colored output with emoji
+
+See [docs/ERROR_LOGGING.md](docs/ERROR_LOGGING.md) and [docs/ERROR_LOGGING_QUICK_REF.md](docs/ERROR_LOGGING_QUICK_REF.md) for details.
+
 ---
 
 ## 📖 Complete Documentation
@@ -517,6 +569,8 @@ See [docs/DATABASE.md](docs/DATABASE.md) for full documentation.
 - **[IMPLEMENTATION_GUIDE.md](docs/IMPLEMENTATION_GUIDE.md)** – Step-by-step blog example ✨
 - **[QUICK_REFERENCE.md](docs/QUICK_REFERENCE.md)** – Quick command and pattern lookup ✨
 - **[MIGRATION_GUIDE.md](docs/MIGRATION_GUIDE.md)** – Migrate existing code to new patterns ✨
+- **[ERROR_LOGGING.md](docs/ERROR_LOGGING.md)** – Enhanced error logging & debugging ✨ **NEW**
+- **[ERROR_LOGGING_QUICK_REF.md](docs/ERROR_LOGGING_QUICK_REF.md)** – Error logging quick reference ✨ **NEW**
 - **[ORBIT.md](docs/ORBIT.md)** – Query builder reference
 - **[BASICS.md](docs/BASICS.md)** – Controller and view basics
 - **[AUTH.md](docs/AUTH.md)** – Authentication setup
