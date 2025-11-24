@@ -3,6 +3,8 @@
 You wanted: *"a Rust framework like Laravel, with middleware, validation,
 models, routes, views, controllers and artisan-style commands, but called **rune**."*
 
+https://mariojgt.github.io/webrust/
+
 Here is your **WebRust starter** – a small but real codebase using:
 
 - [Axum] for routing & middleware
