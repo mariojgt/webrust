@@ -47,6 +47,23 @@ impl CacheDriver for MemoryCache {
         Ok(())
     }
 
+    async fn add(&self, key: &str, value: &str, seconds: u64) -> Result<bool, CacheError> {
+        let mut store = self.store.write().await;
+        if let Some(item) = store.get(key) {
+            if item.expires_at > Instant::now() {
+                return Ok(false);
+            }
+        }
+        store.insert(
+            key.to_string(),
+            CacheItem {
+                value: value.to_string(),
+                expires_at: Instant::now() + Duration::from_secs(seconds),
+            },
+        );
+        Ok(true)
+    }
+
     async fn forget(&self, key: &str) -> Result<(), CacheError> {
         let mut store = self.store.write().await;
         store.remove(key);

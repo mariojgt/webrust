@@ -69,6 +69,14 @@ impl CacheDriver for FileCache {
         Ok(())
     }
 
+    async fn add(&self, key: &str, value: &str, seconds: u64) -> Result<bool, CacheError> {
+        if self.get(key).await?.is_some() {
+            return Ok(false);
+        }
+        self.put(key, value, seconds).await?;
+        Ok(true)
+    }
+
     async fn forget(&self, key: &str) -> Result<(), CacheError> {
         let path = self.get_path(key);
         if path.exists() {

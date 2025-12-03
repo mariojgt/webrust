@@ -13,6 +13,7 @@ mod orbit;
 mod config;
 mod support;
 mod events;
+mod console;
 pub mod cache;
 pub mod database;
 pub mod commands;
@@ -143,6 +144,33 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 RuneCommand::MigrateRollback => {
                     cli::rollback_migrations().await?;
                 }
+                RuneCommand::DbSeed { class } => {
+                    let db_manager = build_database_manager().await;
+                    println!("🌱 Seeding database...");
+
+                    // In a real scenario, we would use a registry or reflection to find the seeder by name.
+                    // For now, we hardcode the main DatabaseSeeder and maybe a few others if needed,
+                    // or we just run the main one which calls others.
+
+                    if class == "DatabaseSeeder" {
+                        use crate::database::seeders::database_seeder::DatabaseSeeder;
+                        use crate::database::seeder::Seeder;
+                        let seeder = DatabaseSeeder;
+                        if let Err(e) = seeder.run(&db_manager).await {
+                            eprintln!("❌ Seeding failed: {}", e);
+                        } else {
+                            println!("✅ Database seeded successfully");
+                        }
+                    } else {
+                        println!("⚠️  Currently only 'DatabaseSeeder' is supported as the entry point.");
+                    }
+                }
+                RuneCommand::MakeSeeder { name } => {
+                    cli::make_seeder(&name)?;
+                }
+                RuneCommand::MakeNotification { name } => {
+                    cli::make_notification(&name)?;
+                }
                 RuneCommand::QueueWork { queue } => {
                     let config = crate::config::Config::new();
                     let mut queue_config = config.queue.clone();
@@ -161,12 +189,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 RuneCommand::ScheduleRun => {
                     println!("⏰ Starting Scheduler...");
-                    let scheduler = crate::services::scheduler::Scheduler::new().await.expect("Failed to create scheduler");
 
-                    // Example task
-                    scheduler.add_async("1/10 * * * * *", || async {
-                        println!("Tick! (every 10s)");
-                    }).await.expect("Failed to add task");
+                    // Initialize Cache
+                    let cache_driver = std::env::var("CACHE_DRIVER").unwrap_or_else(|_| "file".to_string());
+                    let cache: Cache = match cache_driver.as_str() {
+                        "redis" => {
+                            let redis_url = std::env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1".to_string());
+                            RedisCache::new(&redis_url).await.map(Cache::Redis).unwrap_or_else(|_| Cache::Memory(MemoryCache::new()))
+                        }
+                        "file" => Cache::File(FileCache::new("storage/cache")),
+                        _ => Cache::Memory(MemoryCache::new()),
+                    };
+
+                    let scheduler = crate::services::scheduler::Scheduler::new(cache).await.expect("Failed to create scheduler");
+
+                    // Load schedule from Console Kernel
+                    crate::console::kernel::schedule(&scheduler).await;
 
                     scheduler.start().await.expect("Failed to start scheduler");
 

@@ -15,6 +15,7 @@ pub mod factory;
 pub mod error_logger;
 pub mod package_manager;
 pub mod package_scaffold;
+pub mod notification;
 
 pub use error_logger::ErrorLogger;
 pub use package_manager::{PackageManager, Package, PackageManifest, ServiceProvider};

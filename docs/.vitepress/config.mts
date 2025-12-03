@@ -62,6 +62,8 @@ export default defineConfig({
           { text: 'Authentication', link: '/AUTH' },
           { text: 'Orbit ORM', link: '/ORBIT' },
           { text: 'Database Connections', link: '/DATABASE' },
+          { text: 'Migrations', link: '/MIGRATIONS' },
+          { text: 'Seeding', link: '/SEEDING' },
           { text: 'Inertia.js', link: '/INERTIA' },
           { text: 'Caching', link: '/CACHE' },
           { text: 'Validation', link: '/VALIDATION' },
@@ -76,7 +78,9 @@ export default defineConfig({
         text: 'Deep Dive',
         items: [
           { text: 'Mail', link: '/MAIL' },
+          { text: 'Notifications', link: '/NOTIFICATIONS' },
           { text: 'Queues', link: '/QUEUES' },
+          { text: 'Scheduler', link: '/SCHEDULER' },
           { text: 'Scheduler', link: '/SCHEDULER' },
           { text: 'CSRF Protection', link: '/CSRF' },
           { text: 'Debugging', link: '/DEBUG_QUICK_REF' },

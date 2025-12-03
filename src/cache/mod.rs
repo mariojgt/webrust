@@ -26,6 +26,7 @@ pub enum CacheError {
 pub trait CacheDriver: Send + Sync {
     async fn get(&self, key: &str) -> Result<Option<String>, CacheError>;
     async fn put(&self, key: &str, value: &str, seconds: u64) -> Result<(), CacheError>;
+    async fn add(&self, key: &str, value: &str, seconds: u64) -> Result<bool, CacheError>;
     async fn forget(&self, key: &str) -> Result<(), CacheError>;
     async fn flush(&self) -> Result<(), CacheError>;
 }
@@ -51,6 +52,14 @@ impl Cache {
             Cache::Redis(c) => c.put(key, value, seconds).await,
             Cache::File(c) => c.put(key, value, seconds).await,
             Cache::Memory(c) => c.put(key, value, seconds).await,
+        }
+    }
+
+    pub async fn add(&self, key: &str, value: &str, seconds: u64) -> Result<bool, CacheError> {
+        match self {
+            Cache::Redis(c) => c.add(key, value, seconds).await,
+            Cache::File(c) => c.add(key, value, seconds).await,
+            Cache::Memory(c) => c.add(key, value, seconds).await,
         }
     }
 

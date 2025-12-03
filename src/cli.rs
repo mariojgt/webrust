@@ -98,6 +98,28 @@ pub enum RuneCommand {
     /// Run database migrations
     Migrate,
 
+    /// Seed the database with records
+    #[command(name = "db:seed")]
+    DbSeed {
+        /// The class name of the root seeder
+        #[arg(long, default_value = "DatabaseSeeder")]
+        class: String,
+    },
+
+    /// Create a new seeder file
+    #[command(name = "make:seeder")]
+    MakeSeeder {
+        /// Name of the seeder (e.g. UserSeeder)
+        name: String,
+    },
+
+    /// Create a new notification class
+    #[command(name = "make:notification")]
+    MakeNotification {
+        /// Name of the notification (e.g. WelcomeEmail)
+        name: String,
+    },
+
     /// Rollback the last database migration
     #[command(name = "migrate:rollback")]
     MigrateRollback,
@@ -844,6 +866,112 @@ fn append_to_mod_file(path: &Path, line: &str) -> io::Result<()> {
         file.write_all(line.as_bytes())?;
         println!("Updated {:?}", path);
     }
+    Ok(())
+}
+
+pub fn make_seeder(name: &str) -> io::Result<()> {
+    let module_name = to_snake_case(name);
+    let struct_name = to_pascal_case(name);
+
+    let seeders_dir = Path::new("src").join("database").join("seeders");
+    fs::create_dir_all(&seeders_dir)?;
+
+    let file_path = seeders_dir.join(format!("{module_name}.rs"));
+
+    if file_path.exists() {
+        println!("Seeder file already exists: {:?}", file_path);
+    } else {
+        let contents = format!(
+            r#"
+use async_trait::async_trait;
+use crate::database::DatabaseManager;
+use crate::database::seeder::Seeder;
+use crate::services::factory::Factory;
+// use crate::models::user::User;
+// use crate::services::factory::UserFactory;
+
+pub struct {struct_name};
+
+#[async_trait]
+impl Seeder for {struct_name} {{
+    async fn run(&self, db: &DatabaseManager) -> Result<(), Box<dyn std::error::Error>> {{
+        // Example: Create 10 users
+        // UserFactory::new().create_many(10).await?;
+
+        Ok(())
+    }}
+}}
+"#
+        );
+
+        fs::write(&file_path, contents.trim_start())?;
+        println!("Created seeder: {:?}", file_path);
+    }
+
+    // Update mod.rs
+    let mod_path = seeders_dir.join("mod.rs");
+    let mod_line = format!("pub mod {module_name};\n");
+    append_to_mod_file(&mod_path, &mod_line)?;
+
+    Ok(())
+}
+
+pub fn make_notification(name: &str) -> io::Result<()> {
+    let module_name = to_snake_case(name);
+    let struct_name = to_pascal_case(name);
+
+    let notifications_dir = Path::new("src").join("notifications");
+    fs::create_dir_all(&notifications_dir)?;
+
+    let file_path = notifications_dir.join(format!("{module_name}.rs"));
+
+    if file_path.exists() {
+        println!("Notification file already exists: {:?}", file_path);
+    } else {
+        let contents = format!(
+            r#"
+use async_trait::async_trait;
+use crate::services::notification::{{Notification, Notifiable, DatabaseMessage}};
+use crate::services::mail::MailMessage;
+use serde_json::json;
+
+pub struct {struct_name};
+
+#[async_trait]
+impl Notification for {struct_name} {{
+    fn via(&self, _notifiable: &dyn Notifiable) -> Vec<String> {{
+        vec!["mail".to_string()]
+    }}
+
+    fn to_mail(&self, notifiable: &dyn Notifiable) -> Option<MailMessage> {{
+        Some(MailMessage {{
+            to: notifiable.route_notification_for("mail")?,
+            subject: "Notification Subject".to_string(),
+            body: "Notification Body".to_string(),
+        }})
+    }}
+
+    fn to_database(&self, _notifiable: &dyn Notifiable) -> Option<DatabaseMessage> {{
+        Some(DatabaseMessage {{
+            message: "Notification Message".to_string(),
+            data: json!({{
+                "key": "value"
+            }}),
+        }})
+    }}
+}}
+"#
+        );
+
+        fs::write(&file_path, contents.trim_start())?;
+        println!("Created notification: {:?}", file_path);
+    }
+
+    // Update mod.rs
+    let mod_path = notifications_dir.join("mod.rs");
+    let mod_line = format!("pub mod {module_name};\n");
+    append_to_mod_file(&mod_path, &mod_line)?;
+
     Ok(())
 }
 

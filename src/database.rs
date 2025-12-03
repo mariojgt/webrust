@@ -3,6 +3,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 pub mod migrator;
+pub mod seeder;
+pub mod seeders;
 
 #[cfg(feature = "mysql")]
 pub type Db = sqlx::MySql;

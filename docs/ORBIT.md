@@ -291,7 +291,20 @@ let roles = user.roles().get(&state.db_manager).await?;
 
 ### Polymorphic Relationships
 
-#### Morph One / Morph Many
+#### Morph One
+
+If a `Post` has one `Image` (polymorphic):
+
+```rust
+impl Post {
+    pub fn image(&self) -> builder::Builder<Image> {
+        // id_column, type_column
+        self.morph_one("imageable_id", "imageable_type")
+    }
+}
+```
+
+#### Morph Many
 
 If a `Post` has many `Comment`s (polymorphic):
 
@@ -300,6 +313,30 @@ impl Post {
     pub fn comments(&self) -> builder::Builder<Comment> {
         // id_column, type_column
         self.morph_many("commentable_id", "commentable_type")
+    }
+}
+```
+
+#### Morph To (Inverse)
+
+The inverse `morph_to` relationship is **not supported** directly by the Orbit trait because Rust requires strict return types (a function cannot return "either a Post or a Video").
+
+You must implement the inverse logic manually in your model or controller:
+
+```rust
+impl Comment {
+    pub async fn commentable(&self, db: &DatabaseManager) -> Result<Option<serde_json::Value>, sqlx::Error> {
+        match self.commentable_type.as_str() {
+            "posts" => {
+                let post = Post::find(db, self.commentable_id).await?;
+                Ok(post.map(|p| serde_json::to_value(p).unwrap()))
+            },
+            "videos" => {
+                let video = Video::find(db, self.commentable_id).await?;
+                Ok(video.map(|v| serde_json::to_value(v).unwrap()))
+            },
+            _ => Ok(None)
+        }
     }
 }
 ```

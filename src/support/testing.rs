@@ -4,7 +4,7 @@ use axum::{
     response::Response,
     Router,
 };
-use tower::ServiceExt; // for `oneshot`
+use tower::util::ServiceExt; // for `oneshot`
 use bytes::Bytes;
 use serde::de::DeserializeOwned;
 use std::collections::HashMap;

@@ -35,6 +35,20 @@ impl CacheDriver for RedisCache {
         Ok(())
     }
 
+    async fn add(&self, key: &str, value: &str, seconds: u64) -> Result<bool, CacheError> {
+        let mut conn = self.connection.lock().await;
+        // SET key value NX EX seconds
+        let result: Option<String> = redis::cmd("SET")
+            .arg(key)
+            .arg(value)
+            .arg("NX")
+            .arg("EX")
+            .arg(seconds)
+            .query_async(&mut *conn)
+            .await?;
+        Ok(result.is_some())
+    }
+
     async fn forget(&self, key: &str) -> Result<(), CacheError> {
         let mut conn = self.connection.lock().await;
         let _: () = conn.del(key).await?;
