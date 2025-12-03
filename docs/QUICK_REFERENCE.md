@@ -228,15 +228,15 @@ impl Repository<Post> for PostRepository {
 
 | Function | Tera Syntax | Example |
 |----------|------------|---------|
-| Variable | `{{ var }}` | `{{ user.name }}` |
+| Variable | `&#123;&#123; var &#125;&#125;` | `&#123;&#123; user.name &#125;&#125;` |
 | If | `{% if condition %}` | `{% if user %}...{% endif %}` |
 | For | `{% for item in items %}` | `{% for post in posts %}...{% endfor %}` |
 | Extends | `{% extends "file" %}` | `{% extends "layout.html" %}` |
 | Block | `{% block name %}` | `{% block content %}...{% endblock %}` |
 | Include | `{% include "file" %}` | `{% include "nav.html" %}` |
 | Set | `{% set var = value %}` | `{% set count = 5 %}` |
-| Filter | `{{ var \| filter }}` | `{{ date \| date(format="%Y-%m-%d") }}` |
-| Length | `{{ array \| length }}` | `{{ posts \| length }}` |
+| Filter | `&#123;&#123; var \| filter &#125;&#125;` | `&#123;&#123; date \| date(format="%Y-%m-%d") &#125;&#125;` |
+| Length | `&#123;&#123; array \| length &#125;&#125;` | `&#123;&#123; posts \| length &#125;&#125;` |
 
 ---
 
