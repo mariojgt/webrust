@@ -67,14 +67,14 @@ async fn login(
 ) -> Result<Json<LoginResponse>> {
     let limiter = auth_limiter();
     let ip = addr.ip().to_string();
-    
+
     if !limiter.check(&ip).await {
         return Err(Error::too_many_requests(
             limiter.get_remaining(&ip).await,
             limiter.window_seconds()
         ));
     }
-    
+
     // Process login...
     Ok(Json(response))
 }
@@ -179,21 +179,21 @@ let limiter = RateLimiterBuilder::new()
 RateLimiterBuilder::new()
     // Set max requests
     .requests(100)
-    
+
     // Time windows
     .per_minute()              // 60 seconds
     .per_hour()                // 3600 seconds
     .per_day()                 // 86400 seconds
     .window(300)               // Custom: 300 seconds
-    
+
     // Tracking method
     .per_ip()                  // Track by IP address
     .per_user()                // Track by user ID
-    
+
     // Exclude paths
     .exclude_path("/health")
     .exclude_paths(vec![...])
-    
+
     // Build
     .build()
 ```
@@ -242,12 +242,12 @@ async fn login(
 ) -> Result<Json<AuthResponse>> {
     let limiter = auth_limiter();
     let ip = addr.ip().to_string();
-    
+
     // Check rate limit
     if !limiter.check(&ip).await {
         let remaining = limiter.get_remaining(&ip).await;
         let retry_after = limiter.window_seconds();
-        
+
         return Err(Error::response(
             429,
             format!(
@@ -257,10 +257,10 @@ async fn login(
             Some(remaining),
         ));
     }
-    
+
     // Process authentication
     let user = authenticate(&payload.email, &payload.password).await?;
-    
+
     Ok(Json(AuthResponse {
         token: user.generate_token(),
         user,
@@ -278,7 +278,7 @@ async fn search(
 ) -> Result<Json<SearchResults>> {
     let limiter = search_limiter();
     let ip = addr.ip().to_string();
-    
+
     // Limit searches
     if !limiter.check(&ip).await {
         return Err(Error::too_many_requests(
@@ -286,7 +286,7 @@ async fn search(
             limiter.window_seconds(),
         ));
     }
-    
+
     // Perform search
     let results = search_db(&params.query).await?;
     Ok(Json(results))
@@ -303,7 +303,7 @@ async fn upload_file(
 ) -> Result<Json<FileResponse>> {
     let limiter = upload_limiter();
     let ip = addr.ip().to_string();
-    
+
     // Rate limit uploads
     if !limiter.check(&ip).await {
         return Err(Error::too_many_requests(
@@ -311,7 +311,7 @@ async fn upload_file(
             limiter.window_seconds(),
         ));
     }
-    
+
     // Process upload
     let file = process_upload(multipart).await?;
     Ok(Json(FileResponse { file }))
@@ -353,7 +353,7 @@ if !limiter.check(&ip).await {
         remaining: limiter.get_remaining(&ip).await,
         retry_after: limiter.window_seconds(),
     };
-    
+
     return Ok(response.to_response());
 }
 ```
@@ -456,7 +456,7 @@ for attempt in 1..=3 {
         // Success
         return Ok(response);
     }
-    
+
     // Exponential backoff
     tokio::time::sleep(Duration::from_secs(2_u64.pow(attempt))).await;
 }
@@ -576,7 +576,7 @@ limiter.clear().await;
 #[tokio::test]
 async fn test_rate_limit() {
     let limiter = RateLimiter::new(RateLimitConfig::new(3, 60));
-    
+
     assert!(limiter.check("user1").await);
     assert!(limiter.check("user1").await);
     assert!(limiter.check("user1").await);
@@ -590,7 +590,7 @@ async fn test_rate_limit() {
 #[tokio::test]
 async fn test_auth_endpoint_rate_limit() {
     let client = test_client().await;
-    
+
     // Make 5 successful requests
     for _ in 0..5 {
         assert_eq!(
@@ -601,7 +601,7 @@ async fn test_auth_endpoint_rate_limit() {
             429
         );
     }
-    
+
     // 6th request should be rate limited
     let response = client.post("/api/login")
         .json(&login_payload())

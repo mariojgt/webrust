@@ -9,7 +9,7 @@ use serde_json::{json, Value};
 pub trait Event: Send + Sync {
     /// Event name for identification
     fn name(&self) -> &'static str;
-    
+
     /// Convert event to JSON for serialization
     fn to_json(&self) -> Value {
         json!({})
@@ -48,13 +48,13 @@ impl EventDispatcher {
     /// Emit an event to all registered listeners
     pub async fn emit(&self, event: &dyn Event) -> Result<(), Box<dyn std::error::Error>> {
         let listeners = self.listeners.read().await;
-        
+
         if let Some(event_listeners) = listeners.get(event.name()) {
             for listener in event_listeners {
                 listener.handle(event).await?;
             }
         }
-        
+
         Ok(())
     }
 
@@ -220,7 +220,7 @@ mod tests {
     #[tokio::test]
     async fn test_event_emission() {
         let dispatcher = EventDispatcher::new();
-        
+
         let event = UserCreatedEvent {
             user_id: 1,
             email: "user@example.com".to_string(),
@@ -229,7 +229,7 @@ mod tests {
 
         dispatcher.listen("user.created", LogEventListener).await;
         let result = dispatcher.emit(&event).await;
-        
+
         assert!(result.is_ok());
         assert_eq!(dispatcher.listener_count("user.created").await, 1);
     }
@@ -237,7 +237,7 @@ mod tests {
     #[tokio::test]
     async fn test_multiple_listeners() {
         let dispatcher = EventDispatcher::new();
-        
+
         let event = UserCreatedEvent {
             user_id: 1,
             email: "user@example.com".to_string(),
@@ -246,9 +246,9 @@ mod tests {
 
         dispatcher.listen("user.created", SendWelcomeEmailListener).await;
         dispatcher.listen("user.created", LogEventListener).await;
-        
+
         assert_eq!(dispatcher.listener_count("user.created").await, 2);
-        
+
         let result = dispatcher.emit(&event).await;
         assert!(result.is_ok());
     }
@@ -256,10 +256,10 @@ mod tests {
     #[tokio::test]
     async fn test_clear_listeners() {
         let dispatcher = EventDispatcher::new();
-        
+
         dispatcher.listen("user.created", LogEventListener).await;
         assert_eq!(dispatcher.listener_count("user.created").await, 1);
-        
+
         dispatcher.clear_event("user.created").await;
         assert_eq!(dispatcher.listener_count("user.created").await, 0);
     }

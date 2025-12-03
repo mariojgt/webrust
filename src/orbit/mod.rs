@@ -19,6 +19,10 @@ pub trait Orbit: Sized + Send + Unpin + for<'r> FromRow<'r, DbRow> {
         None
     }
 
+    // Configuration
+    const TIMESTAMPS: bool = true;
+    const SOFT_DELETES: bool = false;
+
     // Required to support update/delete on instance
     fn id(&self) -> i64;
 
@@ -26,6 +30,14 @@ pub trait Orbit: Sized + Send + Unpin + for<'r> FromRow<'r, DbRow> {
     fn boot() {}
 
     fn query() -> builder::Builder<Self> {
+        let mut builder = builder::Builder::new(Self::table_name());
+        if Self::SOFT_DELETES {
+            builder = builder.where_null("deleted_at");
+        }
+        builder
+    }
+
+    fn with_trashed() -> builder::Builder<Self> {
         builder::Builder::new(Self::table_name())
     }
 
@@ -37,11 +49,27 @@ pub trait Orbit: Sized + Send + Unpin + for<'r> FromRow<'r, DbRow> {
         Self::query().where_eq(Self::primary_key(), id).first(manager).await
     }
 
+    async fn find_or_fail(manager: &DatabaseManager, id: i64) -> Result<Self, sqlx::Error> {
+        match Self::find(manager, id).await? {
+            Some(model) => Ok(model),
+            None => Err(sqlx::Error::RowNotFound),
+        }
+    }
+
     async fn create<D>(manager: &DatabaseManager, data: D) -> Result<u64, sqlx::Error>
     where D: serde::Serialize + Send + Sync
     {
         let pool = manager.connection(Self::connection()).ok_or(sqlx::Error::Configuration("No database connection found".into()))?;
-        let value = serde_json::to_value(data).unwrap();
+        let mut value = serde_json::to_value(data).unwrap();
+
+        if let Some(obj) = value.as_object_mut() {
+            if Self::TIMESTAMPS {
+                let now = chrono::Local::now().naive_local().to_string();
+                obj.insert("created_at".to_string(), serde_json::Value::String(now.clone()));
+                obj.insert("updated_at".to_string(), serde_json::Value::String(now));
+            }
+        }
+
         let object = value.as_object().expect("Data must be an object");
 
         let mut keys = Vec::new();
@@ -79,7 +107,15 @@ pub trait Orbit: Sized + Send + Unpin + for<'r> FromRow<'r, DbRow> {
     where D: serde::Serialize + Send + Sync
     {
         let pool = manager.connection(Self::connection()).ok_or(sqlx::Error::Configuration("No database connection found".into()))?;
-        let value = serde_json::to_value(data).unwrap();
+        let mut value = serde_json::to_value(data).unwrap();
+
+        if let Some(obj) = value.as_object_mut() {
+            if Self::TIMESTAMPS {
+                let now = chrono::Local::now().naive_local().to_string();
+                obj.insert("updated_at".to_string(), serde_json::Value::String(now));
+            }
+        }
+
         let object = value.as_object().expect("Data must be an object");
 
         let mut updates = Vec::new();
@@ -115,7 +151,42 @@ pub trait Orbit: Sized + Send + Unpin + for<'r> FromRow<'r, DbRow> {
 
     async fn delete(&self, manager: &DatabaseManager) -> Result<u64, sqlx::Error> {
         let pool = manager.connection(Self::connection()).ok_or(sqlx::Error::Configuration("No database connection found".into()))?;
+
+        if Self::SOFT_DELETES {
+            let now = chrono::Local::now().naive_local().to_string();
+            let sql = format!("UPDATE {} SET deleted_at = ? WHERE {} = ?", Self::table_name(), Self::primary_key());
+            let res = sqlx::query(&sql)
+                .bind(now)
+                .bind(self.id())
+                .execute(pool)
+                .await?;
+            Ok(res.rows_affected())
+        } else {
+            let sql = format!("DELETE FROM {} WHERE {} = ?", Self::table_name(), Self::primary_key());
+            let res = sqlx::query(&sql)
+                .bind(self.id())
+                .execute(pool)
+                .await?;
+            Ok(res.rows_affected())
+        }
+    }
+
+    async fn force_delete(&self, manager: &DatabaseManager) -> Result<u64, sqlx::Error> {
+        let pool = manager.connection(Self::connection()).ok_or(sqlx::Error::Configuration("No database connection found".into()))?;
         let sql = format!("DELETE FROM {} WHERE {} = ?", Self::table_name(), Self::primary_key());
+        let res = sqlx::query(&sql)
+            .bind(self.id())
+            .execute(pool)
+            .await?;
+        Ok(res.rows_affected())
+    }
+
+    async fn restore(&self, manager: &DatabaseManager) -> Result<u64, sqlx::Error> {
+        if !Self::SOFT_DELETES {
+            return Ok(0);
+        }
+        let pool = manager.connection(Self::connection()).ok_or(sqlx::Error::Configuration("No database connection found".into()))?;
+        let sql = format!("UPDATE {} SET deleted_at = NULL WHERE {} = ?", Self::table_name(), Self::primary_key());
         let res = sqlx::query(&sql)
             .bind(self.id())
             .execute(pool)

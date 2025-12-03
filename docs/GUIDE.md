@@ -107,3 +107,17 @@ Place your CSS, JS, and images in the `public/` directory.
 They are accessible via `/public/...`.
 
 Example: `public/css/app.css` -> `http://localhost:8000/public/css/app.css`
+
+## 🧪 Testing
+
+WebRust includes a fluent testing API for writing integration tests.
+
+```rust
+#[tokio::test]
+async fn test_home() {
+    let client = TestClient::new().await;
+    client.get("/").await.assert_ok();
+}
+```
+
+See [Testing Documentation](TESTING.md) for more details.

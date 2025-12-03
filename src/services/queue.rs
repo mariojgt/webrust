@@ -1,11 +1,13 @@
 use serde::{Serialize, Deserialize};
 use crate::config::queue::QueueConfig;
+use crate::database::DatabaseManager;
 use redis::Commands;
 use async_trait::async_trait;
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
+use chrono::Local;
 
 #[async_trait]
 pub trait Job: Serialize + for<'de> Deserialize<'de> + Send + Sync {
@@ -78,7 +80,7 @@ impl Queue {
         }
     }
 
-    pub async fn work(config: &QueueConfig, registry: Arc<JobRegistry>) -> Result<(), String> {
+    pub async fn work(config: &QueueConfig, registry: Arc<JobRegistry>, db_manager: Option<DatabaseManager>) -> Result<(), String> {
         println!("👷 Starting queue worker for queue: {}", config.queue_name);
 
         match config.driver.as_str() {
@@ -122,9 +124,14 @@ impl Queue {
 
                             println!("📥 Processing job: {}", job_name);
 
-                            match registry.execute(job_name, payload).await {
+                            match registry.execute(job_name, payload.clone()).await {
                                 Ok(_) => println!("✅ Job {} completed", job_name),
-                                Err(e) => eprintln!("❌ Job {} failed: {}", job_name, e),
+                                Err(e) => {
+                                    eprintln!("❌ Job {} failed: {}", job_name, e);
+                                    if let Some(db) = &db_manager {
+                                        Self::log_failed_job(db, config, job_name, &payload, &e).await;
+                                    }
+                                },
                             }
                         }
                         Err(e) => {
@@ -137,6 +144,28 @@ impl Queue {
             _ => {
                 println!("Queue driver '{}' does not support worker process (sync runs immediately).", config.driver);
                 Ok(())
+            }
+        }
+    }
+
+    async fn log_failed_job(db_manager: &DatabaseManager, config: &QueueConfig, job_name: &str, payload: &str, exception: &str) {
+        if let Some(pool) = db_manager.default_connection() {
+            let sql = "INSERT INTO failed_jobs (connection, queue, payload, exception, failed_at) VALUES (?, ?, ?, ?, ?)";
+            let now = Local::now().naive_local();
+
+            let res = sqlx::query(sql)
+                .bind(&config.driver)
+                .bind(&config.queue_name)
+                .bind(payload)
+                .bind(exception)
+                .bind(now)
+                .execute(pool)
+                .await;
+
+            if let Err(e) = res {
+                eprintln!("❌ Failed to log failed job to database: {}", e);
+            } else {
+                println!("📝 Failed job logged to database");
             }
         }
     }

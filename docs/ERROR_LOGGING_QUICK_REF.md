@@ -151,7 +151,7 @@ pub async fn store(
     Form(data): Form<CreateUserRequest>
 ) -> impl IntoResponse {
     let logger = ErrorLogger::new("storage/logs/users.log");
-    
+
     match User::create(&state.db_manager, data).await {
         Ok(user) => {
             log_success!("User created");
@@ -183,7 +183,7 @@ pub async fn batch_process(items: Vec<Item>) -> Result<Vec<Processed>> {
         }
         results
     });
-    
+
     log_success!("Batch processing complete");
     Ok(results)
 }
@@ -253,11 +253,11 @@ Enable error logging in tests:
 #[test]
 fn test_user_creation() {
     let logger = ErrorLogger::new("storage/logs/tests.log");
-    
+
     timer!("test_user_creation", {
         // Test code
     });
-    
+
     log_success!("Test passed");
 }
 ```

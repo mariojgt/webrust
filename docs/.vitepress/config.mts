@@ -6,7 +6,7 @@ export default defineConfig({
   description: "A Laravel-inspired Rust mini framework",
   base: '/webrust/', // Assuming repository name is 'webrust'. Change if different.
   lastUpdated: true,
-  cleanUrls: true,
+  cleanUrls: false,
   sitemap: {
     hostname: 'https://mariojgt.github.io/webrust'
   },

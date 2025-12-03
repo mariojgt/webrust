@@ -33,7 +33,7 @@ impl ErrorLogger {
     /// Log an error with context
     pub fn log_error(&self, title: &str, message: &str, file: &str, line: u32, context: Option<serde_json::Value>) {
         let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S%.3f");
-        
+
         let log_entry = json!({
             "timestamp": timestamp.to_string(),
             "level": "ERROR",
@@ -62,14 +62,14 @@ impl ErrorLogger {
     /// Log a warning
     pub fn log_warning(&self, message: &str, context: Option<serde_json::Value>) {
         let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S%.3f");
-        
+
         let formatted = format!(
             "[{}] WARNING: {}\n",
             timestamp, message
         );
 
         eprintln!("{}", formatted);
-        
+
         if self.is_debug {
             self.write_to_file(&formatted);
         }
@@ -82,7 +82,7 @@ impl ErrorLogger {
         }
 
         let timestamp = Local::now().format("%Y-%m-%d %H:%M:%S%.3f");
-        
+
         let formatted = format!(
             "[{}] DEBUG [{}]: {}\n",
             timestamp, title, data
@@ -124,7 +124,7 @@ impl ErrorLogger {
         if let Some(extension) = path.extension() {
             let stem = path.file_stem().unwrap().to_str().unwrap();
             let parent = path.parent().unwrap();
-            
+
             let timestamp = Local::now().format("%Y%m%d_%H%M%S");
             let archived_name = format!(
                 "{}_{}.{}",

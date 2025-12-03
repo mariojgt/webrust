@@ -23,7 +23,7 @@ A Laravel-like interactive shell for debugging and testing:
 
 - **Configuration Commands:**
   - `config:app` - View application configuration
-  - `config:db` - View database configuration  
+  - `config:db` - View database configuration
   - `config:env` - View environment variables (with password masking)
 
 - **Application Commands:**
@@ -327,7 +327,7 @@ async fn test_create_user() {
         .create()
         .await
         .expect("Failed to create user");
-    
+
     assert_eq!(user["email"], "test@example.com");
     assert_eq!(user["is_admin"], true);
 }
@@ -339,7 +339,7 @@ async fn test_create_many_posts() {
         .create_many(5)
         .await
         .expect("Failed to create posts");
-    
+
     assert_eq!(posts.len(), 5);
 }
 ```

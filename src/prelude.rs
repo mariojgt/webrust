@@ -26,7 +26,7 @@ pub use crate::events::{Event, Listener, EventDispatcher};
 pub use crate::services::{PackageManager, Package, PackageManifest, ServiceProvider, scaffold_package};
 pub use crate::http::rate_limiter::{RateLimiter, RateLimitConfig};
 pub use crate::http::rate_limit_strategies::{
-    auth_limiter, api_limiter, global_limiter, sensitive_limiter, 
+    auth_limiter, api_limiter, global_limiter, sensitive_limiter,
     search_limiter, upload_limiter, RateLimiterBuilder
 };
 pub use axum::{extract::State, response::{Html, IntoResponse}, Json};

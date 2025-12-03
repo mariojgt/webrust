@@ -255,7 +255,7 @@ mod tests {
     #[tokio::test]
     async fn test_rate_limit_check() {
         let limiter = RateLimiter::new(RateLimitConfig::new(3, 1));
-        
+
         assert!(limiter.check("user1").await);
         assert!(limiter.check("user1").await);
         assert!(limiter.check("user1").await);
@@ -265,31 +265,31 @@ mod tests {
     #[tokio::test]
     async fn test_get_count() {
         let limiter = RateLimiter::new(RateLimitConfig::new(5, 1));
-        
+
         limiter.check("user2").await;
         limiter.check("user2").await;
-        
+
         assert_eq!(limiter.get_count("user2").await, 2);
     }
 
     #[tokio::test]
     async fn test_get_remaining() {
         let limiter = RateLimiter::new(RateLimitConfig::new(5, 1));
-        
+
         limiter.check("user3").await;
         limiter.check("user3").await;
-        
+
         assert_eq!(limiter.get_remaining("user3").await, 3);
     }
 
     #[tokio::test]
     async fn test_per_ip_isolation() {
         let limiter = RateLimiter::new(RateLimitConfig::new(2, 1));
-        
+
         assert!(limiter.check("192.168.1.1").await);
         assert!(limiter.check("192.168.1.1").await);
         assert!(!limiter.check("192.168.1.1").await);
-        
+
         // Different IP should not be limited
         assert!(limiter.check("192.168.1.2").await);
     }
@@ -297,11 +297,11 @@ mod tests {
     #[tokio::test]
     async fn test_reset() {
         let limiter = RateLimiter::new(RateLimitConfig::new(2, 1));
-        
+
         limiter.check("user4").await;
         limiter.check("user4").await;
         assert!(!limiter.check("user4").await);
-        
+
         limiter.reset("user4").await;
         assert!(limiter.check("user4").await);
     }
@@ -309,12 +309,12 @@ mod tests {
     #[tokio::test]
     async fn test_clear() {
         let limiter = RateLimiter::new(RateLimitConfig::new(2, 1));
-        
+
         limiter.check("user5").await;
         limiter.check("user6").await;
-        
+
         limiter.clear().await;
-        
+
         assert_eq!(limiter.get_count("user5").await, 0);
         assert_eq!(limiter.get_count("user6").await, 0);
     }
@@ -325,7 +325,7 @@ mod tests {
             .with_per_user(true)
             .with_per_ip(false)
             .with_exclude_paths(vec!["/health".to_string()]);
-        
+
         assert_eq!(config.max_requests, 100);
         assert_eq!(config.window_seconds, 30);
         assert!(config.per_user);

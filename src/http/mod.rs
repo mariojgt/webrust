@@ -16,6 +16,6 @@ pub use policies::{Policy, Authorizer, PostPolicy, UserPolicy, CommentPolicy};
 pub use ignition::{ErrorContext, StackFrame};
 pub use rate_limiter::{RateLimiter, RateLimitConfig, RateLimitResponse, rate_limit_middleware};
 pub use rate_limit_strategies::{
-    auth_limiter, api_limiter, global_limiter, sensitive_limiter, 
+    auth_limiter, api_limiter, global_limiter, sensitive_limiter,
     search_limiter, upload_limiter, RateLimiterBuilder
 };

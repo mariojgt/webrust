@@ -259,7 +259,7 @@ mod tests {
     async fn test_user_factory() {
         let factory = UserFactory::new();
         let user = factory.make().await;
-        
+
         assert!(user.get("name").is_some());
         assert!(user.get("email").is_some());
         assert!(user.get("password").is_some());
@@ -271,9 +271,9 @@ mod tests {
             .with_name("John Doe")
             .with_email("john@example.com")
             .admin();
-        
+
         let user = factory.make().await;
-        
+
         assert_eq!(user["name"], "John Doe");
         assert_eq!(user["email"], "john@example.com");
         assert_eq!(user["is_admin"], true);
@@ -283,7 +283,7 @@ mod tests {
     async fn test_post_factory() {
         let factory = PostFactory::new().with_user_id(5);
         let post = factory.make().await;
-        
+
         assert!(post.get("title").is_some());
         assert_eq!(post["user_id"], 5);
     }

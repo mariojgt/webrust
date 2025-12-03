@@ -35,7 +35,7 @@ features:
   - title: Clean Architecture
     details: Repository, Service Patterns, Observers, Policies, and Tinker debugging.
   - title: Testing Tools
-    details: Factory pattern for test data generation, Route listing, and Migration templates.
+    details: Fluent Testing API for integration tests, Factory pattern for test data generation.
   - title: Response Helpers
     details: Laravel-like response helpers for consistent API responses and quick actions.
   - title: Developer Productivity

@@ -97,7 +97,7 @@ impl Policy for PostPolicy {
         // Users can only update their own posts
         let user_id = user.get("id").and_then(|v| v.as_i64());
         let post_user_id = post.get("user_id").and_then(|v| v.as_i64());
-        
+
         match (user_id, post_user_id) {
             (Some(uid), Some(pid)) => Ok(uid == pid),
             _ => Ok(false),
@@ -109,7 +109,7 @@ impl Policy for PostPolicy {
         let user_id = user.get("id").and_then(|v| v.as_i64());
         let post_user_id = post.get("user_id").and_then(|v| v.as_i64());
         let is_admin = user.get("is_admin").and_then(|v| v.as_bool()).unwrap_or(false);
-        
+
         match (user_id, post_user_id) {
             (Some(uid), Some(pid)) => Ok(uid == pid || is_admin),
             _ => Ok(false),
@@ -137,7 +137,7 @@ impl Policy for UserPolicy {
         let user_id = user.get("id").and_then(|v| v.as_i64());
         let resource_id = resource.get("id").and_then(|v| v.as_i64());
         let is_admin = user.get("is_admin").and_then(|v| v.as_bool()).unwrap_or(false);
-        
+
         match (user_id, resource_id) {
             (Some(uid), Some(rid)) => Ok(uid == rid || is_admin),
             _ => Ok(false),
@@ -168,7 +168,7 @@ impl Policy for CommentPolicy {
         // Users can only update their own comments
         let user_id = user.get("id").and_then(|v| v.as_i64());
         let comment_user_id = comment.get("user_id").and_then(|v| v.as_i64());
-        
+
         match (user_id, comment_user_id) {
             (Some(uid), Some(cid)) => Ok(uid == cid),
             _ => Ok(false),
@@ -180,7 +180,7 @@ impl Policy for CommentPolicy {
         let user_id = user.get("id").and_then(|v| v.as_i64());
         let comment_user_id = comment.get("user_id").and_then(|v| v.as_i64());
         let is_admin = user.get("is_admin").and_then(|v| v.as_bool()).unwrap_or(false);
-        
+
         match (user_id, comment_user_id) {
             (Some(uid), Some(cid)) => Ok(uid == cid || is_admin),
             _ => Ok(false),
@@ -198,7 +198,7 @@ mod tests {
         let policy = PostPolicy;
         let user = json!({"id": 1});
         let post = json!({"id": 1, "user_id": 2});
-        
+
         let result = policy.view(&user, &post).await;
         assert!(result.unwrap()); // Anyone can view
     }
@@ -208,7 +208,7 @@ mod tests {
         let policy = PostPolicy;
         let user = json!({"id": 1});
         let post = json!({"id": 1, "user_id": 1});
-        
+
         let result = policy.update(&user, &post).await;
         assert!(result.unwrap()); // Can update own post
     }
@@ -218,7 +218,7 @@ mod tests {
         let policy = PostPolicy;
         let user = json!({"id": 1});
         let post = json!({"id": 1, "user_id": 2});
-        
+
         let result = policy.update(&user, &post).await;
         assert!(!result.unwrap()); // Cannot update other's post
     }
@@ -228,7 +228,7 @@ mod tests {
         let policy = PostPolicy;
         let admin = json!({"id": 1, "is_admin": true});
         let post = json!({"id": 1, "user_id": 2});
-        
+
         let result = policy.delete(&admin, &post).await;
         assert!(result.unwrap()); // Admin can delete any post
     }
@@ -238,10 +238,10 @@ mod tests {
         let policy = UserPolicy;
         let regular_user = json!({"id": 1, "is_admin": false});
         let admin = json!({"id": 2, "is_admin": true});
-        
+
         let regular_result = policy.create(&regular_user).await;
         let admin_result = policy.create(&admin).await;
-        
+
         assert!(!regular_result.unwrap()); // Regular user cannot create
         assert!(admin_result.unwrap()); // Admin can create
     }
@@ -251,7 +251,7 @@ mod tests {
         let policy = PostPolicy;
         let user = json!({"id": 1});
         let post = json!({"id": 1, "user_id": 1});
-        
+
         let result = Authorizer::authorize(&policy, &user, &post, "update").await;
         assert!(result.unwrap()); // Should be authorized
     }

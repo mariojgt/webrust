@@ -259,7 +259,7 @@ Authorizer::authorize_or_fail(&policy, &user, &post, "update").await?;
 Phase 3 is **complete and production-ready**. WebRust now features a comprehensive set of 14 Laravel-inspired features with:
 
 - 🎯 Clean, intuitive API design
-- 🚀 Blazing fast Rust performance  
+- 🚀 Blazing fast Rust performance
 - 🔒 Type-safe patterns
 - 📚 Comprehensive documentation
 - ✅ Full test coverage

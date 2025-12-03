@@ -148,11 +148,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let mut queue_config = config.queue.clone();
                     queue_config.queue_name = queue;
 
+                    // Initialize Database Manager for failed jobs
+                    let db_manager = build_database_manager().await;
+
                     // Register jobs here
                     let mut registry = crate::services::queue::JobRegistry::new();
                     registry.register::<crate::services::mail::SendEmailJob>("SendEmailJob");
 
-                    if let Err(e) = crate::services::queue::Queue::work(&queue_config, Arc::new(registry)).await {
+                    if let Err(e) = crate::services::queue::Queue::work(&queue_config, Arc::new(registry), Some(db_manager)).await {
                         eprintln!("Queue worker failed: {}", e);
                     }
                 }

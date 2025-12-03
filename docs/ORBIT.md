@@ -76,10 +76,59 @@ let users = User::query()
 To get a single record:
 
 ```rust
-let user = User::query()
-    .where_eq("email", "admin@example.com")
-    .first(&state.db_manager)
+// Find or Fail (returns 404-like error if not found)
+let user = User::find_or_fail(&state.db_manager, 1).await?;
+
+// Query Builder
+let active_users = User::query()
+    .where_eq("active", true)
+    .order_by("created_at", "DESC")
+    .limit(10)
+    .get(&state.db_manager)
     .await?;
+```
+
+## 3. Creating & Updating
+
+Orbit automatically handles `created_at` and `updated_at` timestamps by default.
+
+```rust
+// Create
+let user_id = User::create(&state.db_manager, json!({
+    "name": "John Doe",
+    "email": "john@example.com"
+})).await?;
+
+// Update
+let user = User::find_or_fail(&state.db_manager, 1).await?;
+user.update(&state.db_manager, json!({
+    "name": "Jane Doe"
+})).await?;
+```
+
+## 4. Soft Deletes
+
+If you enable `const SOFT_DELETES: bool = true;` in your model:
+
+- `delete()` will set `deleted_at` to the current timestamp instead of removing the record.
+- `all()` and `find()` will automatically exclude deleted records.
+- Use `User::with_trashed()` to include deleted records in your query.
+- Use `restore()` to bring back a soft-deleted record.
+- Use `force_delete()` to permanently remove it.
+
+```rust
+// Soft delete
+user.delete(&state.db_manager).await?;
+
+// Restore
+user.restore(&state.db_manager).await?;
+
+// Force delete
+user.force_delete(&state.db_manager).await?;
+```
+
+## 5. Relationships
+
 ```
 
 ### Debugging SQL

@@ -98,17 +98,17 @@ use my_app::blog::BlogPackage;
 #[tokio::main]
 async fn main() {
     let mut package_manager = PackageManager::new("packages");
-    
+
     // Register packages
     package_manager.register(Box::new(BlogPackage))?;
-    
+
     // Boot all packages (runs service providers)
     package_manager.boot().await?;
-    
+
     // Get aggregated routes
     let routes = package_manager.routes();
     let migrations = package_manager.migrations();
-    
+
     // Continue with app startup...
 }
 ```
@@ -187,13 +187,13 @@ Called when the package is first installed:
 async fn install(&self) -> Result<(), Box<dyn std::error::Error>> {
     // Run migrations
     run_migrations().await?;
-    
+
     // Seed initial data
     seed_data().await?;
-    
+
     // Create necessary files/directories
     fs::create_dir_all("storage/blog")?;
-    
+
     println!("✅ Blog package installed");
     Ok(())
 }
@@ -208,7 +208,7 @@ async fn enable(&self) -> Result<(), Box<dyn std::error::Error>> {
     // Activate features
     // Register routes
     // Subscribe to events
-    
+
     println!("✅ Blog package enabled");
     Ok(())
 }
@@ -223,7 +223,7 @@ async fn disable(&self) -> Result<(), Box<dyn std::error::Error>> {
     // Clean up resources
     // Unregister event listeners
     // Stop background jobs
-    
+
     println!("✅ Blog package disabled");
     Ok(())
 }
@@ -237,13 +237,13 @@ Called when the package is being removed:
 async fn uninstall(&self) -> Result<(), Box<dyn std::error::Error>> {
     // Rollback migrations
     rollback_migrations().await?;
-    
+
     // Remove stored data
     remove_data().await?;
-    
+
     // Clean up files
     fs::remove_dir_all("storage/blog")?;
-    
+
     println!("✅ Blog package uninstalled");
     Ok(())
 }

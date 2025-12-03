@@ -261,7 +261,7 @@ use crate::prelude::*;
 #[post("/users")]
 pub async fn store(State(state): State<AppState>) -> impl IntoResponse {
     let logger = ErrorLogger::new("storage/logs/users.log");
-    
+
     match create_user().await {
         Ok(user) => {
             log_success!("User created");
@@ -300,7 +300,7 @@ pub async fn handle_error(error: DatabaseError) -> impl IntoResponse {
         .with_context("host", &error.host)
         .with_context("port", &error.port.to_string())
         .at(file!(), line!());
-    
+
     context.into_response()
 }
 ```

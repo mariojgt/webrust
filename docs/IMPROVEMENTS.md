@@ -15,7 +15,7 @@ cargo run -- rune tinker
 
 Inside Tinker:
 - `db:tables` – List all database tables
-- `db:table users` – Show table columns  
+- `db:table users` – Show table columns
 - `db:count users` – Count rows
 - `sql:execute <query>` – Run raw SQL
 - `config:app` – View app config
@@ -269,7 +269,7 @@ pub async fn update_post(
 ) -> impl IntoResponse {
     // Get post
     let post = Post::find(&state.db_manager, id).await.ok();
-    
+
     // Check authorization
     let policy = PostPolicy;
     match Authorizer::authorize(&policy, &user.to_json(), &post.to_json(), "update").await {

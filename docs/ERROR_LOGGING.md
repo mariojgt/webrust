@@ -449,7 +449,7 @@ The error logging system works seamlessly with existing code:
 #[post("/users")]
 pub async fn store(State(state): State<AppState>, Form(data): Form<CreateUserRequest>) -> impl IntoResponse {
     let logger = ErrorLogger::new("storage/logs/users.log");
-    
+
     match validate_user_data(&data) {
         Ok(user) => {
             match save_to_database(&user, &state.db_manager).await {

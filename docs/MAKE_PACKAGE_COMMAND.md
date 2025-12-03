@@ -114,11 +114,11 @@ impl Package for BlogPackage {
             .with_version("0.1.0")
             .with_description("A WebRust modular package")
     }
-    
+
     fn providers(&self) -> Vec<Box<dyn ServiceProvider>> {
         vec![]
     }
-    
+
     // Implement lifecycle hooks...
 }
 ```
@@ -137,12 +137,12 @@ impl ServiceProvider for BlogServiceProvider {
     fn name(&self) -> &str {
         "blog"
     }
-    
+
     async fn register(&self) -> Result<(), Box<dyn std::error::Error>> {
         println!("📝 Registering blog services");
         Ok(())
     }
-    
+
     async fn boot(&self) -> Result<(), Box<dyn std::error::Error>> {
         println!("🚀 Booting blog services");
         Ok(())
@@ -294,7 +294,7 @@ async fn main() {
     let mut manager = PackageManager::new("packages");
     manager.register(Box::new(BlogPackage))?;
     manager.boot().await?;
-    
+
     // Continue with app startup...
 }
 ```
@@ -361,7 +361,7 @@ The command validates the package name before creation:
 
 If you use an invalid name, you'll see:
 ```
-Invalid package name: 'BlogPackage'. Package names must be 
+Invalid package name: 'BlogPackage'. Package names must be
 lowercase alphanumeric with underscores.
 ```
 

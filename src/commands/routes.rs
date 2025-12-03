@@ -14,7 +14,7 @@ pub fn list_routes() {
         ("GET", "/users/{id}/edit", "UserController", "edit", "Show edit user form"),
         ("PUT", "/users/{id}", "UserController", "update", "Update user"),
         ("DELETE", "/users/{id}", "UserController", "destroy", "Delete user"),
-        
+
         ("GET", "/posts", "PostController", "index", "List all posts"),
         ("GET", "/posts/create", "PostController", "create", "Show create post form"),
         ("POST", "/posts", "PostController", "store", "Store new post"),
@@ -22,7 +22,7 @@ pub fn list_routes() {
         ("GET", "/posts/{id}/edit", "PostController", "edit", "Show edit post form"),
         ("PUT", "/posts/{id}", "PostController", "update", "Update post"),
         ("DELETE", "/posts/{id}", "PostController", "destroy", "Delete post"),
-        
+
         ("GET", "/api/users", "Api\\UserController", "index", "Get all users (JSON)"),
         ("POST", "/api/users", "Api\\UserController", "store", "Create user (JSON)"),
         ("GET", "/api/users/{id}", "Api\\UserController", "show", "Get user (JSON)"),

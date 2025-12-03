@@ -88,3 +88,26 @@ numprocs=2
 redirect_stderr=true
 stdout_logfile=/path/to/webrust/storage/logs/worker.log
 ```
+
+## Failed Jobs
+
+WebRust includes built-in support for handling failed jobs. If a job throws an error during execution, it will be logged to the `failed_jobs` database table.
+
+### Database Migration
+
+To use this feature, you must run the migration to create the `failed_jobs` table:
+
+```bash
+cargo run -- rune migrate
+```
+
+The table structure includes:
+- `connection`: The queue connection (e.g., redis)
+- `queue`: The queue name
+- `payload`: The JSON payload of the job
+- `exception`: The error message returned by the job
+- `failed_at`: Timestamp of failure
+
+### Retrying Failed Jobs
+
+(Coming Soon) Future versions will include a command to retry failed jobs from the database.

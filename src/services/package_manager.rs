@@ -171,7 +171,7 @@ impl PackageManager {
     /// Register a package
     pub fn register(&mut self, package: Box<dyn Package>) -> Result<(), Box<dyn std::error::Error>> {
         let manifest = package.manifest();
-        
+
         if !manifest.enabled {
             println!("⏭️  Package {} is disabled, skipping registration", manifest.name);
             return Ok(());
@@ -180,7 +180,7 @@ impl PackageManager {
         let name = manifest.name.clone();
         self.manifest_cache.insert(name.clone(), manifest);
         self.packages.insert(name, package);
-        
+
         Ok(())
     }
 
@@ -211,7 +211,7 @@ impl PackageManager {
     pub async fn boot(&self) -> Result<(), Box<dyn std::error::Error>> {
         for (name, package) in &self.packages {
             println!("🚀 Booting package: {}", name);
-            
+
             for provider in package.providers() {
                 provider.register().await?;
             }
@@ -390,7 +390,7 @@ mod tests {
         let mut manager = PackageManager::new(".");
         let package = Box::new(TestPackage);
         manager.register(package).ok();
-        
+
         let packages = manager.list();
         assert_eq!(packages.len(), 1);
         assert_eq!(packages[0].1.name, "test");
@@ -401,7 +401,7 @@ mod tests {
         let mut manager = PackageManager::new(".");
         let package1 = Box::new(TestPackage);
         manager.register(package1).ok();
-        
+
         let results = manager.search("test");
         assert_eq!(results.len(), 1);
     }

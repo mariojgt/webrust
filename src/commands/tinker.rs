@@ -237,14 +237,14 @@ fn print_app_info(app_state: &AppState) {
     println!("  • HTTP Server: Axum");
     println!("  • Templating: Tera");
     println!("  • Database: SQLx");
-    
+
     if app_state.db_manager.default_connection().is_some() {
         println!("  • Database Connection: ✅ Active");
     } else {
         println!("  • Database Connection: ❌ Not configured");
     }
-    
-    println!("  • Caching: {} configured", 
+
+    println!("  • Caching: {} configured",
         if true { "Redis" } else { "No cache" }
     );
 }

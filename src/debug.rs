@@ -10,12 +10,12 @@ pub struct DebugDump {
 pub type EnhancedDebugDump = DebugDump;
 
 /// Enhanced `dd!()` - Dump and Die with beautiful formatting
-/// 
+///
 /// # Examples
 /// ```
 /// let user = User { id: 1, name: "John" };
 /// dd!(user);  // Pretty prints and panics
-/// 
+///
 /// // Multiple values
 /// dd!(user, post, comment);
 /// ```
@@ -107,7 +107,7 @@ macro_rules! debug_if {
 }
 
 /// Performance timer - measure execution time of a block
-/// 
+///
 /// # Examples
 /// ```
 /// timer!("database_query", {
@@ -170,7 +170,7 @@ macro_rules! log_info {
 }
 
 /// Assert with better error messages
-/// 
+///
 /// # Examples
 /// ```
 /// assert_debug!(user.id == 5, "User ID should be 5, got: {:?}", user.id);
@@ -210,7 +210,7 @@ mod tests {
             file: "test.rs",
             line: 42,
         };
-        
+
         assert_eq!(dump.file, "test.rs");
         assert_eq!(dump.line, 42);
     }

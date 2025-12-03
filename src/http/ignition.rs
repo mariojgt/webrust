@@ -79,7 +79,7 @@ impl ErrorContext {
     pub fn to_html(&self) -> String {
         let status_color = self.get_status_color();
         let status_code = 500;
-        
+
         let stack_html = if self.is_debug {
             self.render_stack_trace()
         } else {
@@ -108,7 +108,7 @@ impl ErrorContext {
             color: #e2e8f0;
             line-height: 1.6;
         }}
-        
+
         .error-header {{
             background: linear-gradient(135deg, {} 0%, {} 100%);
             padding: 3rem 2rem;
